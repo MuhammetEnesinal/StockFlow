@@ -1,4 +1,5 @@
-﻿using StockFlow.Application.Interfaces.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using StockFlow.Application.Interfaces.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,36 +8,36 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Infrastructure.Repositories
 {
-    public class GenericRepository<T> : IGenericRepository<T> where T : class
+    public class GenericRepository<T> (AppDbContext _context): IGenericRepository<T> where T : class
     {
-        public async Task<T> AddAsync(T entity)
+        public async Task AddAsync(T entity)
         {
-            
+            await _context.Set<T>().AddAsync(entity);
         }
 
         public void Delete(T entity)
         {
-            throw new NotImplementedException();
+            _context.Set<T>().Remove(entity);
         }
 
-        public Task<IEnumerable<T>> GetAllAsync()
+        public async Task<IEnumerable<T>> GetAllAsync()
         {
-            throw new NotImplementedException();
+          return  await _context.Set<T>().ToListAsync();
         }
 
-        public Task<T> GetByIdAsync(int id)
+        public async Task<T> GetByIdAsync(int id)
         {
-            throw new NotImplementedException();
+            return await _context.Set<T>().FindAsync(id);
         }
 
         public IQueryable<T> Query()
         {
-            throw new NotImplementedException();
+            return _context.Set<T>().AsNoTracking();
         }
 
         public void Update(T entity)
         {
-            throw new NotImplementedException();
+            _context.Set<T>().Update(entity);
         }
     }
 }

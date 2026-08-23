@@ -11,7 +11,7 @@ namespace StockFlow.Application.Interfaces.Repositories
         Task<T> GetByIdAsync(int id);
         Task<IEnumerable<T>> GetAllAsync();
         IQueryable<T> Query();
-        Task<T> AddAsync(T entity);
+        Task AddAsync(T entity);
         void Update(T entity);
         void Delete(T entity);
 
