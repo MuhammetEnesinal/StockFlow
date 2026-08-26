@@ -18,6 +18,9 @@ public class StockMovement : BaseEntity
     public int? OrderId { get; set; }
     public Order? Order { get; set; }
 
+    public int? PurchaseOrderId { get; set; }
+    public PurchaseOrder? PurchaseOrder { get; set; }
+
     public Guid? TransferGroupId { get; set; }
 
     public int PerformedByUserId { get; set; }

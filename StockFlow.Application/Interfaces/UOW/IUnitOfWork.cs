@@ -8,7 +8,7 @@ namespace StockFlow.Application.Interfaces.UOW
 {
     public interface IUnitOfWork 
     {
-        Task<bool> SaveChangesAsync();
+        Task<int> SaveChangesAsync();
 
     }
 }

@@ -9,9 +9,9 @@ namespace StockFlow.Infrastructure.UOW
 {
     public class UnitOfWork(AppDbContext _context) : IUnitOfWork
     {
-        public async Task<bool> SaveChangesAsync()
+        public async Task<int> SaveChangesAsync()
         {
-          return await  _context.SaveChangesAsync()>0;
+          return await  _context.SaveChangesAsync();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Interfaces.Repositories;
+using StockFlow.Domain.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Infrastructure.Repositories
 {
-    public class GenericRepository<T> (AppDbContext _context): IGenericRepository<T> where T : class
+    public class GenericRepository<T> (AppDbContext _context): IGenericRepository<T> where T : BaseEntity
     {
         public async Task AddAsync(T entity)
         {
@@ -25,9 +26,9 @@ namespace StockFlow.Infrastructure.Repositories
           return  await _context.Set<T>().ToListAsync();
         }
 
-        public async Task<T> GetByIdAsync(int id)
+        public async Task<T?> GetByIdAsync(int id)
         {
-            return await _context.Set<T>().FindAsync(id);
+            return await _context.Set<T>().FirstOrDefaultAsync(e => e.Id == id);
         }
 
         public IQueryable<T> Query()
