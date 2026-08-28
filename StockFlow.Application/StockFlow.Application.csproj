@@ -10,8 +10,4 @@
     <ProjectReference Include="..\StockFlow.Domain\StockFlow.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="DTOs\" />
-  </ItemGroup>
-
 </Project>
