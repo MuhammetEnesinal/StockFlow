@@ -12,9 +12,9 @@ namespace StockFlow.Application.Interfaces.Services
     {
         Task<BaseResult<IEnumerable<ResultCategoryDto>>> GetAllAsync();
         Task<BaseResult<ResultCategoryDto>> GetByIdAsync(int id);
-        Task<BaseResult<object>> CreateAsync(CreateCategoryDto createCategoryDto);
-        Task<BaseResult<object>> UpdateAsync(int id, UpdateCategoryDto dto);
+        Task<BaseResult<ResultCategoryDto>> CreateAsync(CreateCategoryDto createCategoryDto);
+        Task<BaseResult<ResultCategoryDto>> UpdateAsync(int id, UpdateCategoryDto dto);
 
-        Task<BaseResult<object>> DeleteAsync(int id);
+        Task<BaseResult<bool>> DeleteAsync(int id);
     }
 }

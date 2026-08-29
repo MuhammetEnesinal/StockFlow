@@ -23,12 +23,12 @@ namespace StockFlow.Infrastructure.Repositories
 
         public async Task<IEnumerable<T>> GetAllAsync()
         {
-          return  await _context.Set<T>().ToListAsync();
+            return await _context.Set<T>().AsNoTracking().ToListAsync();
         }
 
         public async Task<T?> GetByIdAsync(int id)
         {
-            return await _context.Set<T>().FirstOrDefaultAsync(e => e.Id == id);
+            return await _context.Set<T>().AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
         }
 
         public IQueryable<T> Query()
