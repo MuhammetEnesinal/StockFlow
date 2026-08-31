@@ -28,6 +28,7 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddMapster();
 builder.Services.AddValidatorsFromAssembly(typeof(CreateCategoryDtoValidator).Assembly);
 
