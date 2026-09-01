@@ -7,7 +7,7 @@ namespace StockFlow.Domain.Enums
         Purchase, //satın alma girişi
         Sale, //satış çıktısı
         TransferIn, //transfer girişi
-        TransferOut, //transfer çıktısı
+        TransferOut, //transfer çıkışı
         Adjustment, // manuel düzeltme
         Return //iade
 
