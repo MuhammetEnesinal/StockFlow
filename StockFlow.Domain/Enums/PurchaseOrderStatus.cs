@@ -11,7 +11,7 @@ namespace StockFlow.Domain.Enums
         Draft,
         Sent,
         PartiallyReceived,
+        Received,
         Cancelled
-
     }
 }

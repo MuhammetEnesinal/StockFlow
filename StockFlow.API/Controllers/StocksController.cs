@@ -23,6 +23,20 @@ namespace StockFlow.API.Controllers
             var result = await _stockService.StockOutAsync(dto);
             return HandleResult(result);
         }
+        
+        [HttpGet("warehouse/{warehouseId}")]
+        public async Task<IActionResult> GetStockByWarehouseAsync(int warehouseId)
+        {
+            var result = await _stockService.GetStockByWarehouseAsync(warehouseId);
+            return HandleResult(result);
+        }
+
+        [HttpGet("{productId}/{warehouseId}/movements")]
+        public async Task<IActionResult> GetMovementsAsync(int productId, int warehouseId)
+        {
+            var result = await _stockService.GetMovementsAsync(productId, warehouseId);
+            return HandleResult(result);
+        }
 
     }
 }

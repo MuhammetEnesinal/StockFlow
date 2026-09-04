@@ -1,6 +1,4 @@
-﻿
-
-namespace StockFlow.Domain.Enums
+﻿namespace StockFlow.Domain.Enums
 {
     public enum StockMovementType
     {
@@ -10,6 +8,5 @@ namespace StockFlow.Domain.Enums
         TransferOut, //transfer çıkışı
         Adjustment, // manuel düzeltme
         Return //iade
-
     }
 }

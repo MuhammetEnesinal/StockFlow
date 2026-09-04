@@ -12,5 +12,8 @@ namespace StockFlow.Application.Interfaces.Services
     {
         Task<BaseResult<ResultStockDto>> StockInAsync(StockInDto stockInDto);
         Task<BaseResult<ResultStockDto>> StockOutAsync(StockOutDto stockOutDto);
+        Task<BaseResult<IEnumerable<ResultStockDto>>> GetStockByWarehouseAsync(int warehouseId);
+        Task<BaseResult<IEnumerable<ResultStockMovementDto>>> GetMovementsAsync(int productId,int warehouseId);
+
     }
 }

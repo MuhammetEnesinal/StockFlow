@@ -11,6 +11,6 @@ namespace StockFlow.Domain.Enums
         Admin, //Her türlü yetkiye sahip, tüm işlemleri yapabilir
         WarehouseManager, //Depo yönetimi ve stok takibi yapabilir, ürün ekleme, güncelleme ve silme işlemlerini gerçekleştirebilir
         WarehouseEmployee, //Depo çalışanı, stok giriş ve çıkış işlemlerini gerçekleştirebilir, ürünleri kontrol edebilir
-        Viwer //Sadece okuma yetkisi olan kullanıcı
+        Viewer //Sadece okuma yetkisi olan kullanıcı
     }
 }
