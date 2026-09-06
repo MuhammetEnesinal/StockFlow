@@ -28,9 +28,10 @@ namespace StockFlow.Infrastructure
         public DbSet<Supplier> Suppliers { get; set; }  
         public DbSet<User> Users {  get; set; }
         public DbSet<Warehouse> Warehouses { get; set; }
-        
+        public DbSet<Customer> Customers { get; set; }
 
-      
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

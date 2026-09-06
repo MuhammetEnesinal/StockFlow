@@ -14,7 +14,8 @@ public class Order : BaseEntity
 
     public int WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
-
+    public int CustomerId { get; set; }         
+    public Customer Customer { get; set; } = null!;   
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 }

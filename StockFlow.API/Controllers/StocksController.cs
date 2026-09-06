@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.StockDtos;
+using StockFlow.Application.DTOs.TransferDtos;
 using StockFlow.Application.Interfaces.Services;
 
 namespace StockFlow.API.Controllers
@@ -35,6 +36,13 @@ namespace StockFlow.API.Controllers
         public async Task<IActionResult> GetMovementsAsync(int productId, int warehouseId)
         {
             var result = await _stockService.GetMovementsAsync(productId, warehouseId);
+            return HandleResult(result);
+        }
+
+        [HttpPost("transfer")]
+        public async Task<IActionResult> TransferAsync(TransferDto dto)
+        {
+            var result = await _stockService.TransferAsync(dto);
             return HandleResult(result);
         }
 
