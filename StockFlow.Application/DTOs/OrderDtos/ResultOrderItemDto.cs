@@ -1,19 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StockFlow.Application.DTOs.OrderDtos
+﻿
+namespace StockFlow.Application.DTOs.OrderDtos;
+public class ResultOrderItemDto
 {
-    public class ResultOrderItemDto
-    {
-
-        public int ProductId { get; set; }
-        public required string ProductName { get; set; }
-        public int Quantity { get; set; }
-        public decimal UnitPrice { get; set; }
-        public decimal LineTotal { get; set; }
-
-    }
+    public int ProductId { get; set; }
+    public required string ProductName { get; set; }
+    public int WarehouseId { get; set; }
+    public required string WarehouseName { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal LineTotal { get; set; }
 }

@@ -12,8 +12,6 @@ namespace StockFlow.Application.Validators.OrderValidators
     {
         public CreateOrderDtoValidator()
         {
-            RuleFor(x => x.WarehouseId)
-                 .GreaterThan(0).WithMessage("Geçerli bir depo seçilmelidir.");
 
             RuleFor(x => x.CustomerId)
                 .GreaterThan(0).WithMessage("Geçerli bir müşteri seçilmelidir.");

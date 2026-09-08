@@ -10,19 +10,19 @@ using StockFlow.Domain.Entities;
 
 namespace StockFlow.Application.Services
 {
-    public class WarehouseService(IGenericRepository<Warehouse> _genericRepository, IUnitOfWork _unitOfWork, IMapper _mapper,IValidator<UpdateWarehouseDto> _updateValidator, IValidator<CreateWarehouseDto> _createValidator) : IWarehouseService
+    public class WarehouseService(IGenericRepository<Warehouse> _genericRepository, IUnitOfWork _unitOfWork, IMapper _mapper, IValidator<CreateWarehouseDto> _createValidator, IValidator<UpdateWarehouseDto> _updateValidator) : IWarehouseService
     {
         public async Task<BaseResult<ResultWarehouseDto>> CreateAsync(CreateWarehouseDto dto)
         {
             dto.Name = dto.Name.Trim();
             dto.Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim();
 
-            var validatonResult = await _createValidator.ValidateAsync(dto);
-            if (!validatonResult.IsValid)
+            var validationResult = await _createValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return  BaseResult<ResultWarehouseDto>.Fail(validatonResult.Errors);
+                return BaseResult<ResultWarehouseDto>.Fail(validationResult.Errors);
             }
-            var mappedWarehouse=_mapper.Map<Warehouse>(dto);
+            var mappedWarehouse = _mapper.Map<Warehouse>(dto);
             await _genericRepository.AddAsync(mappedWarehouse);
             await _unitOfWork.SaveChangesAsync();
             var resultWarehouse = _mapper.Map<ResultWarehouseDto>(mappedWarehouse);
@@ -34,7 +34,7 @@ namespace StockFlow.Application.Services
             var warehouse = await _genericRepository.Query()
                 .Include(s => s.Stocks)
                 .Include(s => s.StockMovements)
-                .Include(o => o.Orders)
+                .Include(o => o.OrderItems)
                 .Include(p => p.PurchaseOrders)
                 .FirstOrDefaultAsync(w => w.Id == id);
 
@@ -50,9 +50,9 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<bool>.Fail("Bu depoya ait stok hareketi geçmişi var, depo silinemez.", ResultErrorType.Conflict);
             }
-            if (warehouse.Orders.Any())
+            if (warehouse.OrderItems.Any())
             {
-                return BaseResult<bool>.Fail("Bu depoya bağlı satış siparişleri var, depo silinemez.", ResultErrorType.Conflict);
+                return BaseResult<bool>.Fail("Bu depoya bağlı sipariş kalemleri var, depo silinemez.", ResultErrorType.Conflict);
             }
             if (warehouse.PurchaseOrders.Any())
             {
@@ -66,19 +66,19 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<IEnumerable<ResultWarehouseDto>>> GetAllAsync()
         {
-            var warehouses =await _genericRepository.GetAllAsync();
-            var mappedWarehouses=_mapper.Map<IEnumerable<ResultWarehouseDto>>(warehouses);
+            var warehouses = await _genericRepository.GetAllAsync();
+            var mappedWarehouses = _mapper.Map<IEnumerable<ResultWarehouseDto>>(warehouses);
             return BaseResult<IEnumerable<ResultWarehouseDto>>.Success(mappedWarehouses);
         }
 
         public async Task<BaseResult<ResultWarehouseDto>> GetByIdAsync(int id)
         {
-            var warehouse=await _genericRepository.GetByIdAsync(id);
+            var warehouse = await _genericRepository.GetByIdAsync(id);
             if (warehouse == null)
             {
-                return BaseResult<ResultWarehouseDto>.Fail("Depo bulunamadı.",ResultErrorType.NotFound);
+                return BaseResult<ResultWarehouseDto>.Fail("Depo bulunamadı.", ResultErrorType.NotFound);
             }
-            var mappedWarehouse=_mapper.Map<ResultWarehouseDto>(warehouse);
+            var mappedWarehouse = _mapper.Map<ResultWarehouseDto>(warehouse);
             return BaseResult<ResultWarehouseDto>.Success(mappedWarehouse);
         }
 
@@ -86,16 +86,16 @@ namespace StockFlow.Application.Services
         {
             dto.Name = dto.Name.Trim();
             dto.Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim();
-            var validationResult=await _updateValidator.ValidateAsync(dto);
+            var validationResult = await _updateValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
                 return BaseResult<ResultWarehouseDto>.Fail(validationResult.Errors);
             }
 
             var warehouse = await _genericRepository.GetByIdAsync(id);
-            if (warehouse == null) {
-
-                return BaseResult<ResultWarehouseDto>.Fail("Güncellenek depo bulunamadı", ResultErrorType.NotFound);
+            if (warehouse == null)
+            {
+                return BaseResult<ResultWarehouseDto>.Fail("Güncellenecek depo bulunamadı.", ResultErrorType.NotFound);
             }
 
             _mapper.Map(dto, warehouse);
@@ -104,7 +104,6 @@ namespace StockFlow.Application.Services
 
             var mappedWarehouse = _mapper.Map<ResultWarehouseDto>(warehouse);
             return BaseResult<ResultWarehouseDto>.Success(mappedWarehouse);
-
         }
     }
 }

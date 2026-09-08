@@ -7,11 +7,6 @@ using StockFlow.Application.Interfaces.Services;
 using StockFlow.Application.Interfaces.UOW;
 using StockFlow.Domain.Entities;
 using StockFlow.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace StockFlow.Application.Services
 {
@@ -27,53 +22,8 @@ namespace StockFlow.Application.Services
         IUnitOfWork _unitOfWork,
         IValidator<CreateOrderDto> _createValidator,
         IValidator<OrderItemRequestDto> _orderItemValidator) : IOrderService
-     {
+    {
         private const int SeedUserId = 1;
-        public async Task<BaseResult<bool>> CancelAsync(int id)
-        {
-            var order =await _orderRepository.Query()
-                .Include(o => o.OrderItems)
-                .FirstOrDefaultAsync(o => o.Id == id);
-            if (order == null) {
-
-                return BaseResult<bool>.Fail("Sipariş bulunamadı.", ResultErrorType.NotFound);
-            }
-            if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Delivered)
-            {
-                return BaseResult<bool>.Fail("İptal edilmiş veya teslim edilmiş sipariş durumu değiştirilemez.", ResultErrorType.BusinessRule);
-            }
-
-            foreach (var orderItem in order.OrderItems)
-            {
-                var stock = await _stockRepository.Query()
-                    .FirstOrDefaultAsync(s => s.ProductId == orderItem.ProductId && s.WarehouseId == order.WarehouseId);
-
-                if (stock == null) {
-                  
-                    return BaseResult<bool>.Fail($"Stok kaydı bulunamadı. ProductId: {orderItem.ProductId}", ResultErrorType.NotFound);
-                }
-                stock.Quantity += orderItem.Quantity;
-                _stockRepository.Update(stock);
-
-                var stockMovement=  new StockMovement
-                {
-                    ProductId = orderItem.ProductId,
-                    WarehouseId = order.WarehouseId,
-                    Type = StockMovementType.Adjustment,
-                    Quantity = orderItem.Quantity,
-                    Order = order,
-                    PerformedByUserId = SeedUserId
-                };
-
-                await _stockMovementRepository.AddAsync(stockMovement);
-
-            }
-            order.Status = OrderStatus.Cancelled;
-            _orderRepository.Update(order);
-            await _unitOfWork.SaveChangesAsync();
-            return BaseResult<bool>.Success(true);
-
-        }
 
         public async Task<BaseResult<ResultOrderDto>> CreateAsync(CreateOrderDto dto)
         {
@@ -89,11 +39,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultOrderDto>.Fail("Müşteri bulunamadı.", ResultErrorType.NotFound);
             }
 
-            var warehouse = await _warehouseRepository.GetByIdAsync(dto.WarehouseId);
-            if (warehouse == null)
-            {
-                return BaseResult<ResultOrderDto>.Fail("Depo bulunamadı.", ResultErrorType.NotFound);
-            }
+            var reservedPerSource = new Dictionary<(int ProductId, int WarehouseId), int>();
 
             foreach (var item in dto.OrderItems)
             {
@@ -102,21 +48,38 @@ namespace StockFlow.Application.Services
                 {
                     return BaseResult<ResultOrderDto>.Fail(itemValidationResult.Errors);
                 }
+
                 var product = await _productRepository.GetByIdAsync(item.ProductId);
                 if (product == null)
                 {
                     return BaseResult<ResultOrderDto>.Fail($"Ürün bulunamadı. ProductId: {item.ProductId}", ResultErrorType.NotFound);
                 }
+
+                var warehouse = await _warehouseRepository.GetByIdAsync(item.WarehouseId);
+                if (warehouse == null)
+                {
+                    return BaseResult<ResultOrderDto>.Fail($"Depo bulunamadı. WarehouseId: {item.WarehouseId}", ResultErrorType.NotFound);
+                }
+
                 var stock = await _stockRepository.Query()
-                    .FirstOrDefaultAsync(s => s.ProductId == item.ProductId && s.WarehouseId == dto.WarehouseId);
+                    .FirstOrDefaultAsync(s => s.ProductId == item.ProductId && s.WarehouseId == item.WarehouseId);
+
                 if (stock == null)
                 {
-                    return BaseResult<ResultOrderDto>.Fail($"Bu depoda ürün için stok bulunamadı. ProductId: {item.ProductId}", ResultErrorType.NotFound);
+                    return BaseResult<ResultOrderDto>.Fail($"Ürün: {product.Name}, Depo: {warehouse.Name} için stok bulunamadı", ResultErrorType.NotFound);
                 }
-                if (stock.Quantity < item.Quantity)
+
+                var key = (item.ProductId, item.WarehouseId);
+                var alreadyReserved = reservedPerSource.TryGetValue(key, out var reserved) ? reserved : 0;
+
+                if ((stock.Quantity - alreadyReserved) < item.Quantity)
                 {
-                    return BaseResult<ResultOrderDto>.Fail($"Yetersiz stok. ProductId: {item.ProductId}, Mevcut: {stock.Quantity}, İstenen: {item.Quantity}", ResultErrorType.BusinessRule);
+                    return BaseResult<ResultOrderDto>.Fail(
+                        $"Yetersiz stok. Ürün: {product.Name}, Depo: {warehouse.Name}, Mevcut: {stock.Quantity - alreadyReserved}, İstenen: {item.Quantity}",
+                        ResultErrorType.BusinessRule);
                 }
+
+                reservedPerSource[key] = alreadyReserved + item.Quantity;
             }
 
             var orderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
@@ -125,28 +88,34 @@ namespace StockFlow.Application.Services
                 OrderNumber = orderNumber,
                 TotalAmount = 0,
                 CreatedByUserId = SeedUserId,
-                WarehouseId = dto.WarehouseId,
                 CustomerId = dto.CustomerId,
                 Status = OrderStatus.Pending
             };
 
             decimal totalAmount = 0;
             var resultItems = new List<ResultOrderItemDto>();
+            var stockCache = new Dictionary<(int ProductId, int WarehouseId), Stock>();
 
             foreach (var item in dto.OrderItems)
             {
                 var product = await _productRepository.GetByIdAsync(item.ProductId);
+                var warehouse = await _warehouseRepository.GetByIdAsync(item.WarehouseId);
 
-                var stock = await _stockRepository.Query()
-                    .FirstOrDefaultAsync(s => s.ProductId == item.ProductId && s.WarehouseId == dto.WarehouseId);
-
+                var key = (item.ProductId, item.WarehouseId);
+                if (!stockCache.TryGetValue(key, out var stock))
+                {
+                    stock = await _stockRepository.Query()
+                        .FirstOrDefaultAsync(s => s.ProductId == item.ProductId && s.WarehouseId == item.WarehouseId);
+                    _stockRepository.Update(stock);
+                    stockCache[key] = stock;
+                }
                 stock.Quantity -= item.Quantity;
-                _stockRepository.Update(stock);
 
                 var orderItem = new OrderItem
                 {
                     Order = order,
                     ProductId = item.ProductId,
+                    WarehouseId = item.WarehouseId,
                     Quantity = item.Quantity,
                     UnitPrice = product.Price
                 };
@@ -155,10 +124,9 @@ namespace StockFlow.Application.Services
                 var movement = new StockMovement
                 {
                     ProductId = item.ProductId,
-                    WarehouseId = dto.WarehouseId,
+                    WarehouseId = item.WarehouseId,
                     Type = StockMovementType.Sale,
                     Quantity = -item.Quantity,
-                    Order = order,
                     PerformedByUserId = SeedUserId
                 };
                 await _stockMovementRepository.AddAsync(movement);
@@ -168,6 +136,8 @@ namespace StockFlow.Application.Services
                 {
                     ProductId = product.Id,
                     ProductName = product.Name,
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.Name,
                     Quantity = item.Quantity,
                     UnitPrice = product.Price,
                     LineTotal = item.Quantity * product.Price
@@ -175,8 +145,7 @@ namespace StockFlow.Application.Services
             }
 
             order.TotalAmount = totalAmount;
-            await _orderRepository.AddAsync(order);   
-
+            await _orderRepository.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
             var userName = (await _userRepository.GetByIdAsync(SeedUserId))?.FullName ?? "Bilinmiyor";
@@ -186,8 +155,6 @@ namespace StockFlow.Application.Services
                 OrderNumber = order.OrderNumber,
                 Status = order.Status.ToString(),
                 TotalAmount = order.TotalAmount,
-                WarehouseId = warehouse.Id,
-                WarehouseName = warehouse.Name,
                 CustomerId = customer.Id,
                 CustomerFullName = customer.FullName,
                 CustomerEmail = customer.Email,
@@ -200,28 +167,26 @@ namespace StockFlow.Application.Services
             return BaseResult<ResultOrderDto>.Success(result);
         }
 
-
-
         public async Task<BaseResult<IEnumerable<ResultOrderDto>>> GetAllAsync()
         {
             var orders = await _orderRepository.Query()
-              .Include(o => o.Customer)
-              .Include(o => o.Warehouse)
-              .Include(o => o.CreatedByUser)
-              .Include(o => o.OrderItems)
-                  .ThenInclude(oi => oi.Product).ToListAsync();
+                .Include(o => o.Customer)
+                .Include(o => o.CreatedByUser)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Warehouse)
+                .ToListAsync();
 
             var resultItems = new List<ResultOrderDto>();
 
-            foreach (var order in orders) {
-
+            foreach (var order in orders)
+            {
                 var resultOrderDto = new ResultOrderDto
                 {
                     OrderNumber = order.OrderNumber,
                     Status = order.Status.ToString(),
                     TotalAmount = order.TotalAmount,
-                    WarehouseId = order.WarehouseId,
-                    WarehouseName = order.Warehouse.Name,
                     CustomerId = order.CustomerId,
                     CustomerFullName = order.Customer.FullName,
                     CustomerEmail = order.Customer.Email,
@@ -232,13 +197,14 @@ namespace StockFlow.Application.Services
                     {
                         ProductId = oi.ProductId,
                         ProductName = oi.Product.Name,
+                        WarehouseId = oi.WarehouseId,
+                        WarehouseName = oi.Warehouse.Name,
                         Quantity = oi.Quantity,
                         UnitPrice = oi.UnitPrice,
                         LineTotal = oi.Quantity * oi.UnitPrice
                     }).ToList()
                 };
                 resultItems.Add(resultOrderDto);
-
             }
 
             return BaseResult<IEnumerable<ResultOrderDto>>.Success(resultItems);
@@ -248,10 +214,11 @@ namespace StockFlow.Application.Services
         {
             var order = await _orderRepository.Query()
                 .Include(o => o.Customer)
-                .Include(o => o.Warehouse)
                 .Include(o => o.CreatedByUser)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Warehouse)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)
@@ -264,8 +231,6 @@ namespace StockFlow.Application.Services
                 OrderNumber = order.OrderNumber,
                 Status = order.Status.ToString(),
                 TotalAmount = order.TotalAmount,
-                WarehouseId = order.WarehouseId,
-                WarehouseName = order.Warehouse.Name,
                 CustomerId = order.CustomerId,
                 CustomerFullName = order.Customer.FullName,
                 CustomerEmail = order.Customer.Email,
@@ -276,6 +241,8 @@ namespace StockFlow.Application.Services
                 {
                     ProductId = oi.ProductId,
                     ProductName = oi.Product.Name,
+                    WarehouseId = oi.WarehouseId,
+                    WarehouseName = oi.Warehouse.Name,
                     Quantity = oi.Quantity,
                     UnitPrice = oi.UnitPrice,
                     LineTotal = oi.Quantity * oi.UnitPrice
@@ -287,52 +254,103 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<ResultOrderDto>> UpdateStatusAsync(int id, OrderStatus newStatus)
         {
-                var order = await _orderRepository.Query()
-            .Include(o => o.Customer)
-            .Include(o => o.Warehouse)
-            .Include(o => o.CreatedByUser)
-            .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            var order = await _orderRepository.Query()
+                .Include(o => o.Customer)
+                .Include(o => o.CreatedByUser)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Warehouse)
+                .FirstOrDefaultAsync(o => o.Id == id);
 
-
-            if(order == null)
+            if (order == null)
             {
                 return BaseResult<ResultOrderDto>.Fail("Sipariş bulunamadı.", ResultErrorType.NotFound);
             }
 
-            if(order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Delivered)
+            if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Delivered)
             {
                 return BaseResult<ResultOrderDto>.Fail("İptal edilmiş veya teslim edilmiş sipariş durumu değiştirilemez.", ResultErrorType.BusinessRule);
             }
 
-                order.Status = newStatus;
-                _orderRepository.Update(order);
-                await _unitOfWork.SaveChangesAsync();
+            order.Status = newStatus;
+            _orderRepository.Update(order);
+            await _unitOfWork.SaveChangesAsync();
 
-                var resultOrderDto = new ResultOrderDto
+            var resultOrderDto = new ResultOrderDto
+            {
+                OrderNumber = order.OrderNumber,
+                Status = order.Status.ToString(),
+                TotalAmount = order.TotalAmount,
+                CustomerId = order.CustomerId,
+                CustomerFullName = order.Customer.FullName,
+                CustomerEmail = order.Customer.Email,
+                CustomerPhoneNumber = order.Customer.PhoneNumber,
+                CreatedByUserId = order.CreatedByUserId,
+                CreatedByUserName = order.CreatedByUser.FullName,
+                Items = order.OrderItems.Select(oi => new ResultOrderItemDto
                 {
-                    OrderNumber = order.OrderNumber,
-                    Status = order.Status.ToString(),
-                    TotalAmount = order.TotalAmount,
-                    WarehouseId = order.WarehouseId,
-                    WarehouseName = order.Warehouse.Name,
-                    CustomerId = order.CustomerId,
-                    CustomerFullName = order.Customer.FullName,
-                    CustomerEmail = order.Customer.Email,
-                    CustomerPhoneNumber = order.Customer.PhoneNumber,
-                    CreatedByUserId = order.CreatedByUserId,
-                    CreatedByUserName = order.CreatedByUser.FullName,
-                    Items = order.OrderItems.Select(oi => new ResultOrderItemDto
-                    {
-                        ProductId = oi.ProductId,
-                        ProductName = oi.Product.Name,
-                        Quantity = oi.Quantity,
-                        UnitPrice = oi.UnitPrice,
-                        LineTotal = oi.Quantity * oi.UnitPrice
-                    }).ToList()
-                };
+                    ProductId = oi.ProductId,
+                    ProductName = oi.Product.Name,
+                    WarehouseId = oi.WarehouseId,
+                    WarehouseName = oi.Warehouse.Name,
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPrice,
+                    LineTotal = oi.Quantity * oi.UnitPrice
+                }).ToList()
+            };
+
             return BaseResult<ResultOrderDto>.Success(resultOrderDto);
+        }
+
+        public async Task<BaseResult<bool>> CancelAsync(int id)
+        {
+            var order = await _orderRepository.Query()
+                .Include(o => o.OrderItems)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+            {
+                return BaseResult<bool>.Fail("Sipariş bulunamadı.", ResultErrorType.NotFound);
+            }
+
+            if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Delivered)
+            {
+                return BaseResult<bool>.Fail("İptal edilmiş veya teslim edilmiş sipariş durumu değiştirilemez.", ResultErrorType.BusinessRule);
+            }
+
+            foreach (var orderItem in order.OrderItems)
+            {
+                var stock = await _stockRepository.Query()
+                    .FirstOrDefaultAsync(s => s.ProductId == orderItem.ProductId && s.WarehouseId == orderItem.WarehouseId);
+
+                if (stock == null)
+                {
+                    return BaseResult<bool>.Fail($"Stok kaydı bulunamadı. ProductId: {orderItem.ProductId}, WarehouseId: {orderItem.WarehouseId}", ResultErrorType.NotFound);
+                }
+
+                stock.Quantity += orderItem.Quantity;
+                _stockRepository.Update(stock);
+
+                var stockMovement = new StockMovement
+                {
+                    ProductId = orderItem.ProductId,
+                    WarehouseId = orderItem.WarehouseId,
+                    Type = StockMovementType.Adjustment,
+                    Quantity = orderItem.Quantity,
+                    Note = $"Sipariş iptali nedeniyle stok iadesi - {order.OrderNumber}",
+                    OrderId = order.Id,
+                    PerformedByUserId = SeedUserId
+                };
+
+                await _stockMovementRepository.AddAsync(stockMovement);
+            }
+
+            order.Status = OrderStatus.Cancelled;
+            _orderRepository.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return BaseResult<bool>.Success(true);
         }
     }
 }

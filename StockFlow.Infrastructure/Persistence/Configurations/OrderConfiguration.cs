@@ -16,11 +16,6 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
                 .HasForeignKey(x => x.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.Warehouse)
-                .WithMany(x => x.Orders)
-                .HasForeignKey(x => x.WarehouseId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasOne(x => x.Customer)
                 .WithMany(x => x.Orders)
                 .HasForeignKey(x => x.CustomerId)

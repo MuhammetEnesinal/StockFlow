@@ -46,5 +46,20 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+
+        [HttpPost("transfer-batch")]
+        public async Task<IActionResult> TransferBatchAsync(TransferBatchDto dto)
+        {
+            var result = await _stockService.TransferBatchAsync(dto);
+            return HandleResult(result);
+        }
+
+
+        [HttpGet("warehouse/{warehouseId}/movements")]
+        public async Task<IActionResult> GetMovementsByWarehouseAsync(int warehouseId)
+        {
+            var result = await _stockService.GetMovementsByWarehouseAsync(warehouseId);
+            return HandleResult(result);
+        }
     }
 }

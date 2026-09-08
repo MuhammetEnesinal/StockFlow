@@ -14,7 +14,7 @@ namespace StockFlow.Domain.Entities
         public ICollection<Stock> Stocks { get; set; } = new List<Stock>();
         public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
         public ICollection<User> Users { get; set; } = new List<User>();
-        public ICollection<Order> Orders { get; set; } = new List<Order>();
+        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
         public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
 
     }
