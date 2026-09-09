@@ -2,6 +2,7 @@
 
 public class ResultOrderDto
 {
+    public int Id { get; set; }
     public required string OrderNumber { get; set; }
     public required string Status { get; set; }
     public decimal TotalAmount { get; set; }

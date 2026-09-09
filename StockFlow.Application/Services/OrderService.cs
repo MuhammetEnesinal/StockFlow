@@ -127,6 +127,7 @@ namespace StockFlow.Application.Services
                     WarehouseId = item.WarehouseId,
                     Type = StockMovementType.Sale,
                     Quantity = -item.Quantity,
+                    Note = $"Sipariş satışı - {orderNumber}",
                     PerformedByUserId = SeedUserId
                 };
                 await _stockMovementRepository.AddAsync(movement);
@@ -152,6 +153,7 @@ namespace StockFlow.Application.Services
 
             var result = new ResultOrderDto
             {
+                Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 Status = order.Status.ToString(),
                 TotalAmount = order.TotalAmount,
@@ -184,6 +186,7 @@ namespace StockFlow.Application.Services
             {
                 var resultOrderDto = new ResultOrderDto
                 {
+                    Id = order.Id,
                     OrderNumber = order.OrderNumber,
                     Status = order.Status.ToString(),
                     TotalAmount = order.TotalAmount,
@@ -228,6 +231,7 @@ namespace StockFlow.Application.Services
 
             var resultOrderDto = new ResultOrderDto
             {
+                Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 Status = order.Status.ToString(),
                 TotalAmount = order.TotalAmount,
@@ -279,6 +283,7 @@ namespace StockFlow.Application.Services
 
             var resultOrderDto = new ResultOrderDto
             {
+                Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 Status = order.Status.ToString(),
                 TotalAmount = order.TotalAmount,
