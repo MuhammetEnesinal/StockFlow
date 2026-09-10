@@ -8,6 +8,7 @@ namespace StockFlow.Application.DTOs.PurchaseOrderDtos
 {
     public class ResultPurchaseOrderItemDto
     {
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public required string ProductName { get; set; }
         public int OrderedQuantity { get; set; }

@@ -15,6 +15,7 @@ namespace StockFlow.Application.Interfaces.Services
         Task<BaseResult<ResultPurchaseOrderDto>> CreateAsync(CreatePurchaseOrderDto createPurchaseOrderDto);
         Task<BaseResult<ResultPurchaseOrderDto>> SendAsync(int id);
         Task<BaseResult<ResultPurchaseOrderDto>> ReceiveAsync(int id, ReceiveDto receiveDto);
+        Task<BaseResult<IEnumerable<ResultPurchaseOrderDto>>> GetBySupplierAsync(int supplierId);
         Task<BaseResult<bool>> CancelAsync(int id);
     }
 }

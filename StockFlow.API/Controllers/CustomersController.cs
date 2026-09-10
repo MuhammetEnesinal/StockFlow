@@ -44,5 +44,7 @@ namespace StockFlow.API.Controllers
             var result = await _customerService.DeleteAsync(id);
             return HandleResult(result);
         }
+
+
     }
 }
