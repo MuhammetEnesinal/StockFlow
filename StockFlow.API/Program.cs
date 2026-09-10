@@ -47,6 +47,7 @@ builder.Services.AddScoped<IStockService, StockService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<IUserService,UserService>();
 
 
 builder.Services.AddMapster();

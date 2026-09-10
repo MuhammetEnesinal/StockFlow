@@ -272,10 +272,49 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultOrderDto>.Fail("Sipariş bulunamadı.", ResultErrorType.NotFound);
             }
 
+
             if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Delivered)
             {
                 return BaseResult<ResultOrderDto>.Fail("İptal edilmiş veya teslim edilmiş sipariş durumu değiştirilemez.", ResultErrorType.BusinessRule);
             }
+            else if (order.Status == OrderStatus.Pending)
+            {
+                if (newStatus != OrderStatus.Confirmed && newStatus != OrderStatus.Cancelled)
+                {
+                    return BaseResult<ResultOrderDto>.Fail(
+                        $"'Pending' durumundan sadece 'Confirmed' ya da 'Cancelled' durumuna geçilebilir.",
+                        ResultErrorType.BusinessRule);
+                }
+            }
+            else if (order.Status == OrderStatus.Confirmed)
+            {
+                if (newStatus != OrderStatus.Preparing && newStatus != OrderStatus.Cancelled)
+                {
+                    return BaseResult<ResultOrderDto>.Fail(
+                        $"'Confirmed' durumundan sadece 'Preparing' ya da 'Cancelled' durumuna geçilebilir.",
+                        ResultErrorType.BusinessRule);
+                }
+            }
+            else if (order.Status == OrderStatus.Preparing)
+            {
+                if (newStatus != OrderStatus.Shipped && newStatus != OrderStatus.Cancelled)
+                {
+                    return BaseResult<ResultOrderDto>.Fail(
+                        $"'Preparing' durumundan sadece 'Shipped' ya da 'Cancelled' durumuna geçilebilir.",
+                        ResultErrorType.BusinessRule);
+                }
+            }
+            else if (order.Status == OrderStatus.Shipped)
+            {
+                if (newStatus != OrderStatus.Delivered)
+                {
+                    return BaseResult<ResultOrderDto>.Fail(
+                        $"'Shipped' durumundan sadece 'Delivered' durumuna geçilebilir.",
+                        ResultErrorType.BusinessRule);
+                }
+            }
+            
+
 
             order.Status = newStatus;
             _orderRepository.Update(order);
