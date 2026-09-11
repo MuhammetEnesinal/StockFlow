@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.StockDtos;
 using StockFlow.Application.DTOs.TransferDtos;
@@ -6,11 +6,12 @@ using StockFlow.Application.Interfaces.Services;
 
 namespace StockFlow.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class StocksController(IStockService _stockService) : BaseController
     {
-
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPost("in")]
         public async Task<IActionResult> StockInAsync(StockInDto dto)
         {
@@ -18,13 +19,14 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPost("out")]
         public async Task<IActionResult> StockOutAsync(StockOutDto dto)
         {
             var result = await _stockService.StockOutAsync(dto);
             return HandleResult(result);
         }
-        
+
         [HttpGet("warehouse/{warehouseId}")]
         public async Task<IActionResult> GetStockByWarehouseAsync(int warehouseId)
         {
@@ -39,6 +41,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
         [HttpPost("transfer")]
         public async Task<IActionResult> TransferAsync(TransferDto dto)
         {
@@ -46,14 +49,13 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
-
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
         [HttpPost("transfer-batch")]
         public async Task<IActionResult> TransferBatchAsync(TransferBatchDto dto)
         {
             var result = await _stockService.TransferBatchAsync(dto);
             return HandleResult(result);
         }
-
 
         [HttpGet("warehouse/{warehouseId}/movements")]
         public async Task<IActionResult> GetMovementsByWarehouseAsync(int warehouseId)

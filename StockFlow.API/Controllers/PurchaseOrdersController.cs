@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.PurchaseOrderDtos;
 using StockFlow.Application.Interfaces.Services;
 
 namespace StockFlow.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class PurchaseOrdersController(IPurchaseOrderService _purchaseOrderService) : BaseController
@@ -16,6 +17,14 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetByIdAsync(int id)
+        {
+            var result = await _purchaseOrderService.GetByIdAsync(id);
+            return HandleResult(result);
+        }
+
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreatePurchaseOrderDto createPurchaseOrderDto)
         {
@@ -23,21 +32,15 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetByIdAsync(int id) { 
-        
-            var result =await _purchaseOrderService.GetByIdAsync(id);
-            return HandleResult(result);
-        }
-
-
-        [HttpPut("{id}/cancel")]
-        public async Task<IActionResult> CancelAsync(int id)
+        [Authorize(Roles = "Admin,WarehouseManager")]
+        [HttpPut("{id}/send")]
+        public async Task<IActionResult> SendAsync(int id)
         {
-            var result =await _purchaseOrderService.CancelAsync(id);
+            var result = await _purchaseOrderService.SendAsync(id);
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPut("{id}/receive")]
         public async Task<IActionResult> ReceiveAsync(int id, ReceiveDto receiveDto)
         {
@@ -45,10 +48,11 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
-        [HttpPut("{id}/send")]
-        public async Task<IActionResult> SendAsync(int id)
+        [Authorize(Roles = "Admin,WarehouseManager")]
+        [HttpPut("{id}/cancel")]
+        public async Task<IActionResult> CancelAsync(int id)
         {
-            var result = await _purchaseOrderService.SendAsync(id);
+            var result = await _purchaseOrderService.CancelAsync(id);
             return HandleResult(result);
         }
 
@@ -57,9 +61,6 @@ namespace StockFlow.API.Controllers
         {
             var result = await _purchaseOrderService.GetBySupplierAsync(supplierId);
             return HandleResult(result);
-
         }
-
     }
 }
-

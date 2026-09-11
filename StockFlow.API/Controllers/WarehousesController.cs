@@ -1,14 +1,17 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.WarehouseDtos;
 using StockFlow.Application.Interfaces.Services;
 
 namespace StockFlow.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class WarehousesController(IWarehouseService _warehouseService) : BaseController
     {
+
         [HttpGet]
         public async Task<IActionResult> GetAllAsync()
         {
@@ -23,6 +26,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreateWarehouseDto dto)
         {
@@ -31,6 +35,7 @@ namespace StockFlow.API.Controllers
 
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAsync(int id, UpdateWarehouseDto dto)
         {
@@ -38,6 +43,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAsync(int id)
         {

@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.CategoryDtos;
 using StockFlow.Application.Interfaces.Services;
 
 namespace StockFlow.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class CategoriesController(ICategoryService _categoryService) : BaseController
@@ -23,6 +25,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreateCategoryDto dto)
         {
@@ -31,6 +34,7 @@ namespace StockFlow.API.Controllers
 
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAsync(int id, UpdateCategoryDto dto)
         {
@@ -38,6 +42,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAsync(int id)
         {

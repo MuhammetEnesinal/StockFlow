@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.OrderDtos;
 using StockFlow.Application.Interfaces.Services;
@@ -6,17 +6,16 @@ using StockFlow.Domain.Enums;
 
 namespace StockFlow.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class OrdersController(IOrderService _orderService) : BaseController
     {
-
         [HttpGet]
         public async Task<IActionResult> GetAllAsync()
         {
             var orders = await _orderService.GetAllAsync();
             return HandleResult(orders);
-
         }
 
         [HttpGet("{id}")]
@@ -26,6 +25,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(order);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreateOrderDto createOrderDto)
         {
@@ -33,6 +33,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatusAsync(int id, [FromBody] OrderStatus newStatus)
         {
@@ -40,13 +41,12 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
         [HttpPut("{id}/cancel")]
         public async Task<IActionResult> CancelAsync(int id)
         {
             var result = await _orderService.CancelAsync(id);
             return HandleResult(result);
-
-
         }
     }
 }
