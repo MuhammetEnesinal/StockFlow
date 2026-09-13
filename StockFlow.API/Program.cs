@@ -1,8 +1,10 @@
 using FluentValidation;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using StockFlow.API.ExceptionHandling;
 using StockFlow.Application.Interfaces.Repositories;
 using StockFlow.Application.Interfaces.Services;
@@ -14,13 +16,30 @@ using StockFlow.Domain.Enums;
 using StockFlow.Infrastructure;
 using StockFlow.Infrastructure.Interceptors;
 using StockFlow.Infrastructure.Repositories;
+using StockFlow.Infrastructure.Services;
 using StockFlow.Infrastructure.UOW;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+
+
+
+
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Host.UseSerilog();
 
 
 builder.Services.AddControllers()          
@@ -61,6 +80,38 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
     options.AddInterceptors(serviceProvider.GetRequiredService<AuditDbContextInterceptor>());
 });
 
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+
+        var userId = httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                     ?? "unknown";
+
+        return RateLimitPartition.GetSlidingWindowLimiter(userId, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window=TimeSpan.FromMinutes(1),
+            SegmentsPerWindow=6,
+            QueueProcessingOrder=QueueProcessingOrder.OldestFirst,
+            QueueLimit=0
+
+
+        });
+
+        
+
+
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+});
+
+
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -76,7 +127,9 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 builder.Services.AddScoped<IUserService,UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ITokenService,TokenService> ();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService,CurrentUserService>();
 
 builder.Services.AddMapster();
 builder.Services.AddValidatorsFromAssembly(typeof(CreateCategoryDtoValidator).Assembly);
@@ -95,6 +148,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
+app.UseRateLimiter();
+
 app.UseAuthorization();
 
 app.MapControllers();

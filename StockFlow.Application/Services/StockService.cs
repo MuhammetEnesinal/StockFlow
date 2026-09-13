@@ -20,9 +20,10 @@ namespace StockFlow.Application.Services
         IValidator<StockInDto> _stockInValidator,
         IValidator<StockOutDto> _stockOutValidator,
         IValidator<TransferDto> _transferValidator,
-        IValidator<TransferBatchDto> _transferBatchValidator) : IStockService
+        IValidator<TransferBatchDto> _transferBatchValidator,
+        ICurrentUserService _currentUserService) : IStockService
     {
-        private const int SeedUserId = 1;
+        
 
         public async Task<BaseResult<ResultStockDto>> StockInAsync(StockInDto stockInDto)
         {
@@ -72,7 +73,7 @@ namespace StockFlow.Application.Services
                 Type = StockMovementType.Adjustment,
                 Quantity = stockInDto.Quantity,
                 Note = stockInDto.Note,
-                PerformedByUserId = SeedUserId
+                PerformedByUserId = _currentUserService.GetUserId()
             };
             await _stockMovementRepository.AddAsync(movement);
 
@@ -137,7 +138,7 @@ namespace StockFlow.Application.Services
                 Type = StockMovementType.Adjustment,
                 Quantity = -stockOutDto.Quantity,
                 Note = stockOutDto.Note,
-                PerformedByUserId = SeedUserId
+                PerformedByUserId = _currentUserService.GetUserId()
             };
             await _stockMovementRepository.AddAsync(movement);
 
@@ -204,6 +205,7 @@ namespace StockFlow.Application.Services
                 Quantity = m.Quantity,
                 PerformedByUserId = m.PerformedByUserId,
                 PerformedByUserName = m.PerformedByUser.FullName,
+                PerformedByEmployeeCode=m.PerformedByUser.EmployeeCode,
                 CreateAtTime = m.CreateAtTime
             }).ToList();
 
@@ -287,7 +289,7 @@ namespace StockFlow.Application.Services
                 Quantity = -dto.Quantity,
                 Note = dto.Note,
                 TransferGroupId = transferGroupId,
-                PerformedByUserId = SeedUserId
+                PerformedByUserId = _currentUserService.GetUserId()
             };
             await _stockMovementRepository.AddAsync(outMovement);
 
@@ -299,7 +301,7 @@ namespace StockFlow.Application.Services
                 Quantity = dto.Quantity,
                 Note = dto.Note,
                 TransferGroupId = transferGroupId,
-                PerformedByUserId = SeedUserId
+                PerformedByUserId = _currentUserService.GetUserId()
             };
             await _stockMovementRepository.AddAsync(inMovement);
 
@@ -434,7 +436,7 @@ namespace StockFlow.Application.Services
                     Quantity = -transfer.Quantity,
                     Note = transfer.Note,
                     TransferGroupId = transferGroupId,
-                    PerformedByUserId = SeedUserId
+                    PerformedByUserId = _currentUserService.GetUserId()
                 };
                 await _stockMovementRepository.AddAsync(outMovement);
 
@@ -446,7 +448,7 @@ namespace StockFlow.Application.Services
                     Quantity = transfer.Quantity,
                     Note = transfer.Note,
                     TransferGroupId = transferGroupId,
-                    PerformedByUserId = SeedUserId
+                    PerformedByUserId = _currentUserService.GetUserId()
                 };
                 await _stockMovementRepository.AddAsync(inMovement);
 
@@ -492,6 +494,7 @@ namespace StockFlow.Application.Services
                 Quantity = m.Quantity,
                 PerformedByUserId = m.PerformedByUserId,
                 PerformedByUserName = m.PerformedByUser.FullName,
+                PerformedByEmployeeCode = m.PerformedByUser.EmployeeCode,
                 CreateAtTime = m.CreateAtTime
             }).ToList();
 

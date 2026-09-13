@@ -2,15 +2,12 @@
 using Microsoft.IdentityModel.Tokens;
 using StockFlow.Application.Interfaces.Services;
 using StockFlow.Domain.Entities;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace StockFlow.Application.Services
+
+namespace StockFlow.Infrastructure.Services
 {
     public class TokenService(IConfiguration _configuration) : ITokenService
     {

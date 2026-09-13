@@ -28,10 +28,9 @@ namespace StockFlow.Application.Services
         IValidator<ReceiveDto> _receiveValidator,
         IValidator<CreatePurchaseOrderDto> _createPurchaseOrderValidator,
         IValidator<ReceiveItemDto> _receiveItemValidator,
-        IValidator<PurchaseOrderItemRequestDto> _purchaseOrderItemRequestValidator) : IPurchaseOrderService
+        IValidator<PurchaseOrderItemRequestDto> _purchaseOrderItemRequestValidator,
+        ICurrentUserService _currentUserService) : IPurchaseOrderService
     {
-        private const int SeedUserId = 1;
-
         public async Task<BaseResult<bool>> CancelAsync(int id)
         {
             var purchaseOrder = await _purchaseOrderRepository.GetByIdAsync(id);
@@ -96,12 +95,11 @@ namespace StockFlow.Application.Services
                 Status = PurchaseOrderStatus.Draft,
                 SupplierId = createPurchaseOrderDto.SupplierId,
                 WarehouseId = createPurchaseOrderDto.WarehouseId,
-                CreatedByUserId = SeedUserId,
+                CreatedByUserId = _currentUserService.GetUserId(),
                 SentAt = null,
                 ReceivedAt = null
             };
 
-           
             var createdItems = new List<(PurchaseOrderItem Item, Product Product)>();
 
             foreach (var item in createPurchaseOrderDto.Items)
@@ -122,7 +120,13 @@ namespace StockFlow.Application.Services
             }
 
             await _purchaseOrderRepository.AddAsync(purchaseOrder);
-            await _unitOfWork.SaveChangesAsync();   
+            await _unitOfWork.SaveChangesAsync();
+
+            var currentUser = await _userRepository.GetByIdAsync(_currentUserService.GetUserId());
+            if (currentUser == null)
+            {
+                return BaseResult<ResultPurchaseOrderDto>.Fail("Oturum açan kullanıcı bulunamadı, lütfen tekrar giriş yapın.", ResultErrorType.Unauthorized);
+            }
 
             var resultItems = createdItems.Select(x => new ResultPurchaseOrderItemDto
             {
@@ -134,8 +138,6 @@ namespace StockFlow.Application.Services
                 UnitPrice = x.Item.UnitPrice
             }).ToList();
 
-            var userName = (await _userRepository.GetByIdAsync(SeedUserId))?.FullName ?? "Bilinmiyor";
-
             var resultDto = new ResultPurchaseOrderDto
             {
                 Id = purchaseOrder.Id,
@@ -145,8 +147,9 @@ namespace StockFlow.Application.Services
                 SupplierName = supplier.Name,
                 WarehouseId = warehouse.Id,
                 WarehouseName = warehouse.Name,
-                CreatedByUserId = SeedUserId,
-                CreatedByUserName = userName,
+                CreatedByUserId = currentUser.Id,
+                CreatedByUserName = currentUser.FullName,
+                CreatedByEmployeeCode = currentUser.EmployeeCode,
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
                 Items = resultItems
@@ -179,7 +182,8 @@ namespace StockFlow.Application.Services
                     WarehouseId = purchaseOrder.WarehouseId,
                     WarehouseName = purchaseOrder.Warehouse.Name,
                     CreatedByUserId = purchaseOrder.CreatedByUserId,
-                    CreatedByUserName = purchaseOrder.CreatedByUser?.FullName ?? "Bilinmiyor",
+                    CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
+                    CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
                     SentAt = purchaseOrder.SentAt,
                     ReceivedAt = purchaseOrder.ReceivedAt,
                     Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
@@ -222,7 +226,8 @@ namespace StockFlow.Application.Services
                 WarehouseId = purchaseOrder.WarehouseId,
                 WarehouseName = purchaseOrder.Warehouse.Name,
                 CreatedByUserId = purchaseOrder.CreatedByUserId,
-                CreatedByUserName = purchaseOrder.CreatedByUser?.FullName ?? "Bilinmiyor",
+                CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
+                CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
                 Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
@@ -242,8 +247,8 @@ namespace StockFlow.Application.Services
         public async Task<BaseResult<IEnumerable<ResultPurchaseOrderDto>>> GetBySupplierAsync(int supplierId)
         {
             var supplier = await _supplierRepository.GetByIdAsync(supplierId);
-            if (supplier == null) {
-
+            if (supplier == null)
+            {
                 return BaseResult<IEnumerable<ResultPurchaseOrderDto>>.Fail("Tedarikçi bulunamadı", ResultErrorType.NotFound);
             }
             var purchaseOrders = await _purchaseOrderRepository.Query()
@@ -255,7 +260,7 @@ namespace StockFlow.Application.Services
                 .Where(po => po.SupplierId == supplierId)
                 .ToListAsync();
             var resultList = new List<ResultPurchaseOrderDto>();
-            foreach ( var purchaseOrder in purchaseOrders )
+            foreach (var purchaseOrder in purchaseOrders)
             {
                 var resultDto = new ResultPurchaseOrderDto
                 {
@@ -267,7 +272,8 @@ namespace StockFlow.Application.Services
                     WarehouseId = purchaseOrder.WarehouseId,
                     WarehouseName = purchaseOrder.Warehouse.Name,
                     CreatedByUserId = purchaseOrder.CreatedByUserId,
-                    CreatedByUserName = purchaseOrder.CreatedByUser?.FullName ?? "Bilinmiyor",
+                    CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
+                    CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
                     SentAt = purchaseOrder.SentAt,
                     ReceivedAt = purchaseOrder.ReceivedAt,
                     Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
@@ -383,7 +389,7 @@ namespace StockFlow.Application.Services
                     Quantity = receiveItem.ReceivedQuantity,
                     Note = $"Satın alma teslimatı - {purchaseOrder.PurchaseOrderNumber}",
                     PurchaseOrderId = purchaseOrder.Id,
-                    PerformedByUserId = SeedUserId
+                    PerformedByUserId = _currentUserService.GetUserId()
                 };
                 await _stockMovementRepository.AddAsync(movement);
             }
@@ -402,8 +408,6 @@ namespace StockFlow.Application.Services
             _purchaseOrderRepository.Update(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
 
-            var userName = (await _userRepository.GetByIdAsync(SeedUserId))?.FullName ?? "Bilinmiyor";
-
             var resultDto = new ResultPurchaseOrderDto
             {
                 Id = purchaseOrder.Id,
@@ -414,7 +418,8 @@ namespace StockFlow.Application.Services
                 WarehouseId = purchaseOrder.WarehouseId,
                 WarehouseName = purchaseOrder.Warehouse.Name,
                 CreatedByUserId = purchaseOrder.CreatedByUserId,
-                CreatedByUserName = purchaseOrder.CreatedByUser?.FullName ?? userName,
+                CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
+                CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
                 Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
@@ -466,7 +471,8 @@ namespace StockFlow.Application.Services
                 WarehouseId = purchaseOrder.WarehouseId,
                 WarehouseName = purchaseOrder.Warehouse.Name,
                 CreatedByUserId = purchaseOrder.CreatedByUserId,
-                CreatedByUserName = purchaseOrder.CreatedByUser?.FullName ?? "Bilinmiyor",
+                CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
+                CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
                 Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto

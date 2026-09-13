@@ -12,5 +12,6 @@ public class ResultOrderDto
     public string? CustomerPhoneNumber { get; set; }
     public int CreatedByUserId { get; set; }
     public required string CreatedByUserName { get; set; }
+    public required string CreatedByEmployeeCode { get; set; }
     public required List<ResultOrderItemDto> Items { get; set; }
 }

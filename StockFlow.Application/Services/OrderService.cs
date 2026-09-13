@@ -21,9 +21,10 @@ namespace StockFlow.Application.Services
         IGenericRepository<User> _userRepository,
         IUnitOfWork _unitOfWork,
         IValidator<CreateOrderDto> _createValidator,
-        IValidator<OrderItemRequestDto> _orderItemValidator) : IOrderService
+        IValidator<OrderItemRequestDto> _orderItemValidator,
+        ICurrentUserService _currentUserService) : IOrderService
     {
-        private const int SeedUserId = 1;
+        
 
         public async Task<BaseResult<ResultOrderDto>> CreateAsync(CreateOrderDto dto)
         {
@@ -87,7 +88,7 @@ namespace StockFlow.Application.Services
             {
                 OrderNumber = orderNumber,
                 TotalAmount = 0,
-                CreatedByUserId = SeedUserId,
+                CreatedByUserId = _currentUserService.GetUserId(),
                 CustomerId = dto.CustomerId,
                 Status = OrderStatus.Pending
             };
@@ -128,7 +129,7 @@ namespace StockFlow.Application.Services
                     Type = StockMovementType.Sale,
                     Quantity = -item.Quantity,
                     Note = $"Sipariş satışı - {orderNumber}",
-                    PerformedByUserId = SeedUserId
+                    PerformedByUserId = _currentUserService.GetUserId()
                 };
                 await _stockMovementRepository.AddAsync(movement);
 
@@ -149,7 +150,12 @@ namespace StockFlow.Application.Services
             await _orderRepository.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
-            var userName = (await _userRepository.GetByIdAsync(SeedUserId))?.FullName ?? "Bilinmiyor";
+            var currentUser = await _userRepository.GetByIdAsync(_currentUserService.GetUserId());
+            if (currentUser == null)
+            {
+                return BaseResult<ResultOrderDto>.Fail("Oturum açan kullanıcı bulunamadı, lütfen tekrar giriş yapın.", ResultErrorType.Unauthorized);
+            }
+            
 
             var result = new ResultOrderDto
             {
@@ -161,8 +167,9 @@ namespace StockFlow.Application.Services
                 CustomerFullName = customer.FullName,
                 CustomerEmail = customer.Email,
                 CustomerPhoneNumber = customer.PhoneNumber,
-                CreatedByUserId = SeedUserId,
-                CreatedByUserName = userName,
+                CreatedByUserId = _currentUserService.GetUserId(),
+                CreatedByUserName = currentUser.FullName,
+                CreatedByEmployeeCode= currentUser.EmployeeCode,
                 Items = resultItems
             };
 
@@ -196,6 +203,7 @@ namespace StockFlow.Application.Services
                     CustomerPhoneNumber = order.Customer.PhoneNumber,
                     CreatedByUserId = order.CreatedByUserId,
                     CreatedByUserName = order.CreatedByUser.FullName,
+                    CreatedByEmployeeCode = order.CreatedByUser.EmployeeCode,
                     Items = order.OrderItems.Select(oi => new ResultOrderItemDto
                     {
                         ProductId = oi.ProductId,
@@ -241,6 +249,7 @@ namespace StockFlow.Application.Services
                 CustomerPhoneNumber = order.Customer.PhoneNumber,
                 CreatedByUserId = order.CreatedByUserId,
                 CreatedByUserName = order.CreatedByUser.FullName,
+                CreatedByEmployeeCode = order.CreatedByUser.EmployeeCode,
                 Items = order.OrderItems.Select(oi => new ResultOrderItemDto
                 {
                     ProductId = oi.ProductId,
@@ -332,6 +341,7 @@ namespace StockFlow.Application.Services
                 CustomerPhoneNumber = order.Customer.PhoneNumber,
                 CreatedByUserId = order.CreatedByUserId,
                 CreatedByUserName = order.CreatedByUser.FullName,
+                CreatedByEmployeeCode= order.CreatedByUser.EmployeeCode,
                 Items = order.OrderItems.Select(oi => new ResultOrderItemDto
                 {
                     ProductId = oi.ProductId,
@@ -384,7 +394,7 @@ namespace StockFlow.Application.Services
                     Quantity = orderItem.Quantity,
                     Note = $"Sipariş iptali nedeniyle stok iadesi - {order.OrderNumber}",
                     OrderId = order.Id,
-                    PerformedByUserId = SeedUserId
+                    PerformedByUserId = _currentUserService.GetUserId()
                 };
 
                 await _stockMovementRepository.AddAsync(stockMovement);

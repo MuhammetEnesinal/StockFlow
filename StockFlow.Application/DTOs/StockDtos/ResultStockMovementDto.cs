@@ -13,6 +13,8 @@ namespace StockFlow.Application.DTOs.StockDtos
         public int Quantity { get; set; }
         public int PerformedByUserId { get; set; }
         public required string PerformedByUserName { get; set; }
+        public required string PerformedByEmployeeCode { get; set; }
+
         public DateTime? CreateAtTime { get; set; }
 
     }
