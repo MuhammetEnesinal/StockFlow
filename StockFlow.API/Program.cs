@@ -159,18 +159,21 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    context.Database.Migrate(); 
+
     if (!context.Users.Any())
     {
         context.Users.Add(new User
         {
             Email = "admin@stockflow.com",
-            PasswordHash = "gecici-hash",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             FullName = "Test Admin",
             EmployeeCode = "EMP-0001",
             Role = UserRole.Admin,
             IsActive = true
         });
-       context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 }
 

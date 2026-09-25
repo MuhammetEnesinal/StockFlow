@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/Çözüm Öğeleri/">
+    <File Path=".env" />
+    <File Path=".env.example" />
+  </Folder>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
   <Project Path="StockFlow.API/StockFlow.API.csproj" />
   <Project Path="StockFlow.Application/StockFlow.Application.csproj" />
   <Project Path="StockFlow.Domain/StockFlow.Domain.csproj" />

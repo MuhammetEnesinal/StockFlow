@@ -12,7 +12,7 @@ namespace StockFlow.Infrastructure.Interceptors
 {
     public class AuditDbContextInterceptor(ICurrentUserService _currentUserService) : SaveChangesInterceptor
     {
-        private readonly List<(EntityEntry<BaseEntity> Entry, AuditAction Action)> _pendingEntries = new();
+        private readonly List<(EntityEntry<BaseEntity> Entry, AuditAction Action, string Changes)> _pendingEntries = new();
 
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
@@ -41,7 +41,7 @@ namespace StockFlow.Infrastructure.Interceptors
                     case EntityState.Added:
                         entry.Entity.CreateAtTime = DateTime.UtcNow;
                         entry.Entity.IsDeleted = false;
-                        _pendingEntries.Add((entry, AuditAction.Create));
+                        _pendingEntries.Add((entry, AuditAction.Create, BuildChanges(entry, AuditAction.Create)));
                         break;
 
                     case EntityState.Modified:
@@ -64,7 +64,7 @@ namespace StockFlow.Infrastructure.Interceptors
                             }
                         }
 
-                        _pendingEntries.Add((entry, AuditAction.Update));
+                        _pendingEntries.Add((entry, AuditAction.Update, BuildChanges(entry, AuditAction.Update)));
                         break;
 
                     case EntityState.Deleted:
@@ -72,7 +72,7 @@ namespace StockFlow.Infrastructure.Interceptors
                         entry.Entity.IsDeleted = true;
                         entry.Entity.UpdateAtTime = DateTime.UtcNow;
                         entry.Property(x => x.CreateAtTime).IsModified = false;
-                        _pendingEntries.Add((entry, AuditAction.Delete));
+                        _pendingEntries.Add((entry, AuditAction.Delete, BuildChanges(entry, AuditAction.Delete)));
                         break;
                 }
             }
@@ -89,9 +89,9 @@ namespace StockFlow.Infrastructure.Interceptors
             {
                 var auditLogs = new List<AuditLog>();
 
-                foreach (var (entry, action) in _pendingEntries)
+                foreach (var (entry, action, changes) in _pendingEntries)
                 {
-                    auditLogs.Add(CreateAuditLog(entry, action));
+                    auditLogs.Add(CreateAuditLog(entry, action, changes));
                 }
 
                 _pendingEntries.Clear();
@@ -103,25 +103,8 @@ namespace StockFlow.Infrastructure.Interceptors
             return await base.SavedChangesAsync(eventData, result, cancellationToken);
         }
 
-        private AuditLog CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action)
+        private string BuildChanges(EntityEntry<BaseEntity> entry, AuditAction action)
         {
-            int userId;
-            string userName;
-            string employeeCode;
-
-            try
-            {
-                userId = _currentUserService.GetUserId();
-                userName = _currentUserService.GetUserName();
-                employeeCode = _currentUserService.GetEmployeeCode();
-            }
-            catch
-            {
-                userId = 0;
-                userName = "Sistem";
-                employeeCode = "N/A";
-            }
-
             var changes = new Dictionary<string, object?>();
 
             if (action == AuditAction.Update)
@@ -148,8 +131,40 @@ namespace StockFlow.Infrastructure.Interceptors
             {
                 foreach (var property in entry.Properties)
                 {
+                    var propertyName = property.Metadata.Name;
+
+                    if (propertyName == "Id" || propertyName == "CreateAtTime" || propertyName == "IsDeleted" || propertyName == "UpdateAtTime")
+                    {
+                        continue;
+                    }
+
                     changes[property.Metadata.Name] = property.CurrentValue;
                 }
+            }
+
+            return JsonSerializer.Serialize(changes, new JsonSerializerOptions
+            {
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+        }
+
+        private AuditLog CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action, string changes)
+        {
+            int userId;
+            string userName;
+            string employeeCode;
+
+            try
+            {
+                userId = _currentUserService.GetUserId();
+                userName = _currentUserService.GetUserName();
+                employeeCode = _currentUserService.GetEmployeeCode();
+            }
+            catch
+            {
+                userId = 0;
+                userName = "Sistem";
+                employeeCode = "N/A";
             }
 
             return new AuditLog
@@ -161,10 +176,7 @@ namespace StockFlow.Infrastructure.Interceptors
                 PerformedByUserName = userName,
                 PerformedByEmployeeCode = employeeCode,
                 CreateAtTime = DateTime.UtcNow,
-                Changes = JsonSerializer.Serialize(changes, new JsonSerializerOptions
-                {
-                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                })
+                Changes = changes
             };
         }
     }

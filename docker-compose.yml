@@ -1,0 +1,24 @@
+services:
+  stockflow.api:
+    image: ${DOCKER_REGISTRY-}stockflowapi
+    build:
+      context: .
+      dockerfile: StockFlow.API/Dockerfile
+    depends_on:
+      - sqlserver
+    environment:
+      - ConnectionStrings__SqlConnection=Server=sqlserver;Database=StockFlowDb;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;
+
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+volumes:
+  sqlserver-data:

@@ -15,7 +15,7 @@ using StockFlow.Domain.Enums;
 
 namespace StockFlow.Application.Services
 {
-    public class AuthService(IGenericRepository<User> _userGenericRepository,ITokenService _tokenService,IValidator<LoginDto> _loginValidator,IConfiguration _configuration, IGenericRepository<AuditLog> _auditLogRepository, IUnitOfWork _unitOfWork,ICurrentUserService _currentUserService) : IAuthService
+    public class AuthService(IGenericRepository<User> _userGenericRepository,ITokenService _tokenService,IValidator<LoginDto> _loginValidator,IConfiguration _configuration, IUnitOfWork _unitOfWork,ICurrentUserService _currentUserService) : IAuthService
     {
         public async Task<BaseResult<LoginResultDto>> LoginAsync(LoginDto loginDto)
         {
@@ -82,17 +82,8 @@ namespace StockFlow.Application.Services
 
          
 
-            var loginAuditLog = new AuditLog
-            {
-                EntityName = "User",
-                Action = AuditAction.Login,
-                PerformedByUserId = user.Id,
-                PerformedByUserName = user.FullName,
-                PerformedByEmployeeCode = user.EmployeeCode,
-                CreateAtTime = DateTime.UtcNow,
-                Changes = null
-            };
-            await _auditLogRepository.AddAsync(loginAuditLog);
+           
+
             await _unitOfWork.SaveChangesAsync();
 
             return BaseResult<LoginResultDto>.Success(loginResult);
