@@ -9,5 +9,7 @@ namespace StockFlow.Application.Interfaces.Services
     public interface ICurrentUserService
     {
         int GetUserId();
+        string GetUserName();
+        string GetEmployeeCode();
     }
 }

@@ -4,6 +4,7 @@ using StockFlow.Application.Interfaces.Services;
 using StockFlow.Domain.Entities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 
@@ -11,14 +12,24 @@ namespace StockFlow.Infrastructure.Services
 {
     public class TokenService(IConfiguration _configuration) : ITokenService
     {
+        public string GenerateRefreshToken()
+        {
+            var randomBytes= new byte[64];
+            var rng=RandomNumberGenerator.Create();
+            rng.GetBytes(randomBytes);
+            return Convert.ToBase64String(randomBytes);
+        }
+
         public string GenerateToken(User user)
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role.ToString())
-
+                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                 new Claim(ClaimTypes.Email, user.Email),
+                 new Claim(ClaimTypes.Role, user.Role.ToString()),
+                 new Claim("FullName", user.FullName),
+                 new Claim("EmployeeCode", user.EmployeeCode)
+ 
             };
             var secretKey = _configuration["JwtSettings:SecretKey"];
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!));

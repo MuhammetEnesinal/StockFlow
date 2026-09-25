@@ -7,6 +7,7 @@ namespace StockFlow.Application.Interfaces.Services
     public interface IAuthService
     {
         Task<BaseResult<LoginResultDto>> LoginAsync(LoginDto loginDto);
-
+        Task<BaseResult<LoginResultDto>> RefreshTokenAsync(RefreshTokenDto refreshTokenDto);
+        Task<BaseResult<bool>> LogoutAsync();
     }
 }

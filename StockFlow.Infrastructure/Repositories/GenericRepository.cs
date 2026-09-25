@@ -38,7 +38,12 @@ namespace StockFlow.Infrastructure.Repositories
 
         public void Update(T entity)
         {
-            _context.Set<T>().Update(entity);
+            var trackedEntity = _context.Set<T>().Find(entity.Id);
+
+            if (trackedEntity != null)
+            {
+                _context.Entry(trackedEntity).CurrentValues.SetValues(entity);
+            }
         }
     }
 }

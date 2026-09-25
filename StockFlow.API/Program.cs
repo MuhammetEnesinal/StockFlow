@@ -130,6 +130,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService,TokenService> ();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService,CurrentUserService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 builder.Services.AddMapster();
 builder.Services.AddValidatorsFromAssembly(typeof(CreateCategoryDtoValidator).Assembly);
@@ -154,6 +155,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -168,8 +170,9 @@ using (var scope = app.Services.CreateScope())
             Role = UserRole.Admin,
             IsActive = true
         });
-        context.SaveChanges();
+       context.SaveChangesAsync();
     }
 }
+
 
 app.Run();

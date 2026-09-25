@@ -10,5 +10,7 @@ namespace StockFlow.Application.Interfaces.Services
     public interface ITokenService
     {
         string GenerateToken(User user);
+
+        string GenerateRefreshToken();
     }
 }

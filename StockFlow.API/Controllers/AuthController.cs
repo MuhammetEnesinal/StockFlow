@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.AuthDtos;
 using StockFlow.Application.Interfaces.Services;
@@ -13,6 +14,21 @@ namespace StockFlow.API.Controllers
         public async Task<IActionResult> LoginAsync(LoginDto loginDto)
         {
             var result = await _authService.LoginAsync(loginDto);
+            return HandleResult(result);
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshTokenAsync(RefreshTokenDto refreshTokenDto)
+        {
+            var result = await _authService.RefreshTokenAsync(refreshTokenDto);
+            return HandleResult(result);
+        }
+
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> LogoutAsync()
+        {
+            var result= await _authService.LogoutAsync();
             return HandleResult(result);
         }
     }

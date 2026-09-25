@@ -12,7 +12,7 @@ namespace StockFlow.API.Controllers
     public class CustomersController(ICustomerService _customerService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllCustomers()
+        public async Task<IActionResult> GetAllAsync()
         {
             var customers = await _customerService.GetAllAsync();
             return HandleResult(customers);
