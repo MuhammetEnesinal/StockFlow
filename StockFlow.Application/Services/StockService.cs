@@ -154,19 +154,26 @@ namespace StockFlow.Application.Services
             });
         }
 
-        public async Task<BaseResult<IEnumerable<ResultStockDto>>> GetStockByWarehouseAsync(int warehouseId)
+        public async Task<BaseResult<PagedResult<ResultStockDto>>> GetStockByWarehouseAsync(int warehouseId, int pageNumber, int pageSize)
         {
-            var warehouse = await _warehouseRepository.Query()
-                .Include(x => x.Stocks)
-                    .ThenInclude(s => s.Product)
-                .FirstOrDefaultAsync(w => w.Id == warehouseId);
-
+            var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
             if (warehouse == null)
             {
-                return BaseResult<IEnumerable<ResultStockDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
+                return BaseResult<PagedResult<ResultStockDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
             }
 
-            var stockDtos = warehouse.Stocks.Select(s => new ResultStockDto
+            var query = _stockRepository.Query()
+                .Include(s => s.Product)
+                .Where(s => s.WarehouseId == warehouseId);
+
+            var totalCount = await query.CountAsync();
+
+            var stocks = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var stockDtos = stocks.Select(s => new ResultStockDto
             {
                 ProductId = s.ProductId,
                 ProductName = s.Product.Name,
@@ -175,23 +182,37 @@ namespace StockFlow.Application.Services
                 Quantity = s.Quantity
             }).ToList();
 
-            return BaseResult<IEnumerable<ResultStockDto>>.Success(stockDtos);
+            var result = new PagedResult<ResultStockDto>
+            {
+                Items = stockDtos,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultStockDto>>.Success(result);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultStockMovementDto>>> GetMovementsAsync(int productId, int warehouseId)
+        public async Task<BaseResult<PagedResult<ResultStockMovementDto>>> GetMovementsAsync(int productId, int warehouseId, int pageNumber, int pageSize)
         {
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null)
-                return BaseResult<IEnumerable<ResultStockMovementDto>>.Fail("Ürün bulunamadı", ResultErrorType.NotFound);
+                return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Ürün bulunamadı", ResultErrorType.NotFound);
 
             var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
             if (warehouse == null)
-                return BaseResult<IEnumerable<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
+                return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
 
-            var movements = await _stockMovementRepository.Query()
+            var query = _stockMovementRepository.Query()
                 .Include(m => m.PerformedByUser)
                 .Where(m => m.ProductId == productId && m.WarehouseId == warehouseId)
-                .OrderByDescending(m => m.CreateAtTime)
+                .OrderByDescending(m => m.CreateAtTime);
+
+            var totalCount = await query.CountAsync();
+
+            var movements = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             var mappedMovements = movements.Select(m => new ResultStockMovementDto
@@ -205,11 +226,19 @@ namespace StockFlow.Application.Services
                 Quantity = m.Quantity,
                 PerformedByUserId = m.PerformedByUserId,
                 PerformedByUserName = m.PerformedByUser.FullName,
-                PerformedByEmployeeCode=m.PerformedByUser.EmployeeCode,
+                PerformedByEmployeeCode = m.PerformedByUser.EmployeeCode,
                 CreateAtTime = m.CreateAtTime
             }).ToList();
 
-            return BaseResult<IEnumerable<ResultStockMovementDto>>.Success(mappedMovements);
+            var result = new PagedResult<ResultStockMovementDto>
+            {
+                Items = mappedMovements,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultStockMovementDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultTransferDto>> TransferAsync(TransferDto dto)
@@ -470,17 +499,23 @@ namespace StockFlow.Application.Services
             return BaseResult<IEnumerable<ResultTransferDto>>.Success(resultList);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultStockMovementDto>>> GetMovementsByWarehouseAsync(int warehouseId)
+        public async Task<BaseResult<PagedResult<ResultStockMovementDto>>> GetMovementsByWarehouseAsync(int warehouseId, int pageNumber, int pageSize)
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
             if (warehouse == null)
-                return BaseResult<IEnumerable<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
+                return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
 
-            var movements = await _stockMovementRepository.Query()
+            var query = _stockMovementRepository.Query()
                 .Include(m => m.PerformedByUser)
                 .Include(m => m.Product)
                 .Where(m => m.WarehouseId == warehouseId)
-                .OrderByDescending(m => m.CreateAtTime)
+                .OrderByDescending(m => m.CreateAtTime);
+
+            var totalCount = await query.CountAsync();
+
+            var movements = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             var mappedMovements = movements.Select(m => new ResultStockMovementDto
@@ -498,7 +533,15 @@ namespace StockFlow.Application.Services
                 CreateAtTime = m.CreateAtTime
             }).ToList();
 
-            return BaseResult<IEnumerable<ResultStockMovementDto>>.Success(mappedMovements);
+            var result = new PagedResult<ResultStockMovementDto>
+            {
+                Items = mappedMovements,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultStockMovementDto>>.Success(result);
         }
     }
 }

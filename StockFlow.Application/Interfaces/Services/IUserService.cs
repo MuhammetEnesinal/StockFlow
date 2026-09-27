@@ -10,7 +10,7 @@ namespace StockFlow.Application.Interfaces.Services
 {
     public interface IUserService
     {
-        Task<BaseResult<IEnumerable<ResultUserDto>>> GetAllAsync();
+        Task<BaseResult<PagedResult<ResultUserDto>>> GetAllAsync(int pageNumber, int pageSize);
         Task<BaseResult<ResultUserDto>> GetByIdAsync(int id);
         Task<BaseResult<ResultUserDto>> CreateAsync(CreateUserDto createUserDto);
 

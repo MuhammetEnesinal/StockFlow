@@ -102,11 +102,17 @@ namespace StockFlow.Application.Services
                 
          }
 
-        public async Task<BaseResult<IEnumerable<ResultProductDto>>> GetAllAsync()
+        public async Task<BaseResult<PagedResult<ResultProductDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var products = await _genericRepository.Query()
+            var query = _genericRepository.Query()
                 .Include(p => p.Category)
-                .Include(p => p.Supplier)
+                .Include(p => p.Supplier);
+
+            var totalCount = await query.CountAsync();
+
+            var products = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             var mappedProducts = products.Select(p =>
@@ -117,7 +123,15 @@ namespace StockFlow.Application.Services
                 return dto;
             }).ToList();
 
-            return BaseResult<IEnumerable<ResultProductDto>>.Success(mappedProducts);
+            var result = new PagedResult<ResultProductDto>
+            {
+                Items = mappedProducts,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultProductDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultProductDto>> GetByIdAsync(int id)

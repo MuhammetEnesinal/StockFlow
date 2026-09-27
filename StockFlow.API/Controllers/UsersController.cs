@@ -11,9 +11,10 @@ namespace StockFlow.API.Controllers
     public class UsersController(IUserService _userService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber=1, [FromQuery] int pageSize=10)
         {
-            var users = await _userService.GetAllAsync();
+            pageSize=Math.Min(pageSize, 100);
+            var users = await _userService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(users);
         }
 

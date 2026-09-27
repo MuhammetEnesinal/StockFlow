@@ -49,11 +49,20 @@ namespace StockFlow.Application.Services
             return BaseResult<bool>.Success(true);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultCategoryDto>>> GetAllAsync()
+        public async Task<BaseResult<PagedResult<ResultCategoryDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var categories = await _repository.GetAllAsync();
-            var mappedCategories = _mapper.Map<IEnumerable<ResultCategoryDto>>(categories);
-            return BaseResult<IEnumerable<ResultCategoryDto>>.Success(mappedCategories);
+            var pagedCategories = await _repository.GetAllAsync(pageNumber, pageSize);
+            var mappedItems = _mapper.Map<List<ResultCategoryDto>>(pagedCategories.Items);
+
+            var result = new PagedResult<ResultCategoryDto>
+            {
+                Items = mappedItems,
+                PageNumber = pagedCategories.PageNumber,
+                PageSize = pagedCategories.PageSize,
+                TotalCount = pagedCategories.TotalCount
+            };
+
+            return BaseResult<PagedResult<ResultCategoryDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultCategoryDto>> GetByIdAsync(int id)

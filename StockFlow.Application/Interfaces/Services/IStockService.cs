@@ -14,9 +14,9 @@ namespace StockFlow.Application.Interfaces.Services
         Task<BaseResult<ResultStockDto>> StockInAsync(StockInDto stockInDto);
         Task<BaseResult<ResultStockDto>> StockOutAsync(StockOutDto stockOutDto);
         Task<BaseResult<ResultTransferDto>> TransferAsync(TransferDto transferDto);
-        Task<BaseResult<IEnumerable<ResultStockDto>>> GetStockByWarehouseAsync(int warehouseId);
-        Task<BaseResult<IEnumerable<ResultStockMovementDto>>> GetMovementsAsync(int productId,int warehouseId);
+        Task<BaseResult<PagedResult<ResultStockDto>>> GetStockByWarehouseAsync(int warehouseId, int pageNumber, int pageSize);
+        Task<BaseResult<PagedResult<ResultStockMovementDto>>> GetMovementsAsync(int productId, int warehouseId, int pageNumber, int pageSize);
         Task<BaseResult<IEnumerable<ResultTransferDto>>> TransferBatchAsync(TransferBatchDto transferBatchDto);
-        Task<BaseResult<IEnumerable<ResultStockMovementDto>>> GetMovementsByWarehouseAsync(int warehouseId);
+        Task<BaseResult<PagedResult<ResultStockMovementDto>>> GetMovementsByWarehouseAsync(int warehouseId, int pageNumber, int pageSize);
     }
 }

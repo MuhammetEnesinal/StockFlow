@@ -12,7 +12,7 @@ namespace StockFlow.Application.Interfaces.Services
     public interface IOrderService
     {
 
-        Task<BaseResult<IEnumerable<ResultOrderDto>>> GetAllAsync();
+        Task<BaseResult<PagedResult<ResultOrderDto>>> GetAllAsync(int pageNumber,int pageSize);
         Task<BaseResult<ResultOrderDto>> GetByIdAsync(int id);
         Task<BaseResult<ResultOrderDto>> CreateAsync(CreateOrderDto dto);
         Task<BaseResult<ResultOrderDto>> UpdateStatusAsync(int id, OrderStatus newStatus);

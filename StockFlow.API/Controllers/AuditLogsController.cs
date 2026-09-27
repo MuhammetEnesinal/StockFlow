@@ -13,25 +13,28 @@ namespace StockFlow.API.Controllers
     {
 
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var auditLogs = await _auditLogService.GetAllAsync();
+            pageSize = Math.Min(pageSize, 100);
+            var auditLogs = await _auditLogService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(auditLogs);
         }
 
 
         [HttpGet("entity/{entityName}")]
-        public async Task<IActionResult> GetByEntityNameAsync(string entityName)
+        public async Task<IActionResult> GetByEntityNameAsync(string entityName, [FromQuery] int pageNumber=1 , [FromQuery] int pageSize=10)
         {
-            var auditLogs = await _auditLogService.GetByEntityNameAsync(entityName);
+            pageSize= Math.Min(pageSize, 100);
+            var auditLogs = await _auditLogService.GetByEntityNameAsync(entityName, pageNumber, pageSize);
             return HandleResult(auditLogs);
         }
 
 
         [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetByUserIdAsync(int userId)
+        public async Task<IActionResult> GetByUserIdAsync(int userId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var auditLogs = await _auditLogService.GetByUserIdAsync(userId);
+            pageSize = Math.Min(pageSize, 100);
+            var auditLogs = await _auditLogService.GetByUserIdAsync(userId, pageNumber, pageSize);
             return HandleResult(auditLogs);
         }
     }

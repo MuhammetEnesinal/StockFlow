@@ -176,15 +176,21 @@ namespace StockFlow.Application.Services
             return BaseResult<ResultOrderDto>.Success(result);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultOrderDto>>> GetAllAsync()
+        public async Task<BaseResult<PagedResult<ResultOrderDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var orders = await _orderRepository.Query()
+            var query = _orderRepository.Query()
                 .Include(o => o.Customer)
                 .Include(o => o.CreatedByUser)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Warehouse)
+                    .ThenInclude(oi => oi.Warehouse);
+
+            var totalCount = await query.CountAsync();
+
+            var orders = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             var resultItems = new List<ResultOrderDto>();
@@ -218,7 +224,15 @@ namespace StockFlow.Application.Services
                 resultItems.Add(resultOrderDto);
             }
 
-            return BaseResult<IEnumerable<ResultOrderDto>>.Success(resultItems);
+            var result = new PagedResult<ResultOrderDto>
+            {
+                Items = resultItems,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultOrderDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultOrderDto>> GetByIdAsync(int id)

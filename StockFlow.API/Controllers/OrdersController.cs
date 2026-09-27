@@ -12,9 +12,10 @@ namespace StockFlow.API.Controllers
     public class OrdersController(IOrderService _orderService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
         {
-            var orders = await _orderService.GetAllAsync();
+            pageSize = Math.Min(pageSize, 100);
+            var orders = await _orderService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(orders);
         }
 

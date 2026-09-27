@@ -12,9 +12,10 @@ namespace StockFlow.API.Controllers
     public class CustomersController(ICustomerService _customerService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
         {
-            var customers = await _customerService.GetAllAsync();
+            pageSize=Math.Min(pageSize, 100);
+            var customers = await _customerService.GetAllAsync(pageNumber,pageSize);
             return HandleResult(customers);
         }
 

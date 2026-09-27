@@ -13,9 +13,10 @@ namespace StockFlow.API.Controllers
     public class ProductsController(IProductService _productService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber=1, [FromQuery] int pageSize=10)
         {
-            var result = await _productService.GetAllAsync();
+            pageSize=Math.Min(pageSize, 100);
+            var result = await _productService.GetAllAsync(pageNumber,pageSize);
             return HandleResult(result);
         }
 

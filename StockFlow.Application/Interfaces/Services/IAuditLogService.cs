@@ -10,8 +10,8 @@ namespace StockFlow.Application.Interfaces.Services
 {
     public interface IAuditLogService
     {
-        Task<BaseResult<IEnumerable<ResultAuditLogDto>>> GetAllAsync();
-        Task<BaseResult<IEnumerable<ResultAuditLogDto>>> GetByEntityNameAsync(string entityName);
-        Task<BaseResult<IEnumerable<ResultAuditLogDto>>> GetByUserIdAsync(int userId);
+        Task<BaseResult<PagedResult<ResultAuditLogDto>>> GetAllAsync(int pageNumber, int pageSize);
+        Task<BaseResult<PagedResult<ResultAuditLogDto>>> GetByEntityNameAsync(string entityName, int pageNumber, int pageSize);
+        Task<BaseResult<PagedResult<ResultAuditLogDto>>> GetByUserIdAsync(int userId, int pageNumber, int pageSize);
     }
 }

@@ -11,9 +11,10 @@ namespace StockFlow.API.Controllers
     public class PurchaseOrdersController(IPurchaseOrderService _purchaseOrderService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
         {
-            var result = await _purchaseOrderService.GetAllAsync();
+            pageSize = Math.Min(pageSize, 100);
+            var result = await _purchaseOrderService.GetAllAsync(pageNumber,pageSize);
             return HandleResult(result);
         }
 
@@ -57,9 +58,10 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpGet("supplier/{supplierId}")]
-        public async Task<IActionResult> GetBySupplierAsync(int supplierId)
+        public async Task<IActionResult> GetBySupplierAsync(int supplierId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _purchaseOrderService.GetBySupplierAsync(supplierId);
+            pageSize = Math.Min(pageSize, 100);
+            var result = await _purchaseOrderService.GetBySupplierAsync(supplierId, pageNumber, pageSize);
             return HandleResult(result);
         }
     }

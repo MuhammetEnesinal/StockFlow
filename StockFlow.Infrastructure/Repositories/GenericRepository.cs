@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using StockFlow.Application.Common;
 using StockFlow.Application.Interfaces.Repositories;
 using StockFlow.Domain.Common;
 using System;
@@ -21,9 +22,24 @@ namespace StockFlow.Infrastructure.Repositories
             _context.Set<T>().Remove(entity);
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync()
+        public async Task<PagedResult<T>> GetAllAsync(int pageNumber, int pageSize)
         {
-            return await _context.Set<T>().AsNoTracking().ToListAsync();
+            var query = _context.Set<T>().AsNoTracking();
+            var totalCount=await query.CountAsync();
+            
+            var items=await query.Skip((pageNumber-1)*pageSize)
+                  .Take(pageSize)
+                  .ToListAsync();
+
+            return new PagedResult<T>
+            {
+                Items = items,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+
+            };
+
         }
 
         public async Task<T?> GetByIdAsync(int id)

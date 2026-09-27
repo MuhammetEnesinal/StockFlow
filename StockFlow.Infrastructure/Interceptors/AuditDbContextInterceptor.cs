@@ -91,7 +91,11 @@ namespace StockFlow.Infrastructure.Interceptors
 
                 foreach (var (entry, action, changes) in _pendingEntries)
                 {
-                    auditLogs.Add(CreateAuditLog(entry, action, changes));
+                    var auditLog = CreateAuditLog(entry, action, changes);
+                    if (auditLog != null)   
+                    {
+                        auditLogs.Add(auditLog);
+                    }
                 }
 
                 _pendingEntries.Clear();
@@ -148,7 +152,7 @@ namespace StockFlow.Infrastructure.Interceptors
             });
         }
 
-        private AuditLog CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action, string changes)
+        private AuditLog? CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action, string changes)
         {
             int userId;
             string userName;
@@ -162,9 +166,7 @@ namespace StockFlow.Infrastructure.Interceptors
             }
             catch
             {
-                userId = 0;
-                userName = "Sistem";
-                employeeCode = "N/A";
+                return null;
             }
 
             return new AuditLog

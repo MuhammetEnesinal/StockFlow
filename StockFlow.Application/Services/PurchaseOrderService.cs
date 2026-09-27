@@ -158,15 +158,21 @@ namespace StockFlow.Application.Services
             return BaseResult<ResultPurchaseOrderDto>.Success(resultDto);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultPurchaseOrderDto>>> GetAllAsync()
+        public async Task<BaseResult<PagedResult<ResultPurchaseOrderDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var purchaseOrders = await _purchaseOrderRepository.Query()
+            var query = _purchaseOrderRepository.Query()
                .Include(po => po.Supplier)
                .Include(po => po.Warehouse)
                .Include(po => po.CreatedByUser)
                .Include(po => po.Items)
-                   .ThenInclude(poi => poi.Product)
-               .ToListAsync();
+                   .ThenInclude(poi => poi.Product);
+
+            var totalCount = await query.CountAsync();
+
+            var purchaseOrders = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             var resultList = new List<ResultPurchaseOrderDto>();
 
@@ -199,7 +205,16 @@ namespace StockFlow.Application.Services
 
                 resultList.Add(resultDto);
             }
-            return BaseResult<IEnumerable<ResultPurchaseOrderDto>>.Success(resultList);
+
+            var result = new PagedResult<ResultPurchaseOrderDto>
+            {
+                Items = resultList,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultPurchaseOrderDto>> GetByIdAsync(int id)
@@ -244,22 +259,31 @@ namespace StockFlow.Application.Services
             return BaseResult<ResultPurchaseOrderDto>.Success(resultDto);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultPurchaseOrderDto>>> GetBySupplierAsync(int supplierId)
+        public async Task<BaseResult<PagedResult<ResultPurchaseOrderDto>>> GetBySupplierAsync(int supplierId, int pageNumber, int pageSize)
         {
             var supplier = await _supplierRepository.GetByIdAsync(supplierId);
             if (supplier == null)
             {
-                return BaseResult<IEnumerable<ResultPurchaseOrderDto>>.Fail("Tedarikçi bulunamadı", ResultErrorType.NotFound);
+                return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Fail("Tedarikçi bulunamadı", ResultErrorType.NotFound);
             }
-            var purchaseOrders = await _purchaseOrderRepository.Query()
+
+            var query = _purchaseOrderRepository.Query()
                 .Include(po => po.Supplier)
                 .Include(po => po.Warehouse)
                 .Include(po => po.CreatedByUser)
                 .Include(po => po.Items)
                     .ThenInclude(poi => poi.Product)
-                .Where(po => po.SupplierId == supplierId)
+                .Where(po => po.SupplierId == supplierId);
+
+            var totalCount = await query.CountAsync();
+
+            var purchaseOrders = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
             var resultList = new List<ResultPurchaseOrderDto>();
+
             foreach (var purchaseOrder in purchaseOrders)
             {
                 var resultDto = new ResultPurchaseOrderDto
@@ -290,7 +314,15 @@ namespace StockFlow.Application.Services
                 resultList.Add(resultDto);
             }
 
-            return BaseResult<IEnumerable<ResultPurchaseOrderDto>>.Success(resultList);
+            var result = new PagedResult<ResultPurchaseOrderDto>
+            {
+                Items = resultList,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultPurchaseOrderDto>> ReceiveAsync(int id, ReceiveDto receiveDto)

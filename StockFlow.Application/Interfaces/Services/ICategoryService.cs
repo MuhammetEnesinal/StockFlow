@@ -10,11 +10,10 @@ namespace StockFlow.Application.Interfaces.Services
 {
     public interface ICategoryService
     {
-        Task<BaseResult<IEnumerable<ResultCategoryDto>>> GetAllAsync();
+        Task<BaseResult<PagedResult<ResultCategoryDto>>> GetAllAsync(int pageNumber, int pageSize);
         Task<BaseResult<ResultCategoryDto>> GetByIdAsync(int id);
         Task<BaseResult<ResultCategoryDto>> CreateAsync(CreateCategoryDto createCategoryDto);
         Task<BaseResult<ResultCategoryDto>> UpdateAsync(int id, UpdateCategoryDto dto);
-
         Task<BaseResult<bool>> DeleteAsync(int id);
     }
 }

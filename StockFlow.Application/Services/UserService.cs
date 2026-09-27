@@ -169,10 +169,17 @@ namespace StockFlow.Application.Services
             return BaseResult<bool>.Success(true);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultUserDto>>> GetAllAsync()
+        public async Task<BaseResult<PagedResult<ResultUserDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var users = await _userGenericRepository.Query()
-                 .Include(u => u.Warehouse).ToListAsync();
+            var query = _userGenericRepository.Query()
+                .Include(u => u.Warehouse);
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             var resultList = new List<ResultUserDto>();
 
@@ -192,9 +199,16 @@ namespace StockFlow.Application.Services
                 });
             }
 
-            return BaseResult<IEnumerable<ResultUserDto>>.Success(resultList);
-        }
+            var result = new PagedResult<ResultUserDto>
+            {
+                Items = resultList,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
 
+            return BaseResult<PagedResult<ResultUserDto>>.Success(result);
+        }
         public async Task<BaseResult<ResultUserDto>> GetByIdAsync(int id)
         {
             var user = await _userGenericRepository.Query()

@@ -11,7 +11,7 @@ namespace StockFlow.Application.Interfaces.Services
     public interface IWarehouseService
     {
 
-        Task<BaseResult<IEnumerable<ResultWarehouseDto>>> GetAllAsync();
+        Task<BaseResult<PagedResult<ResultWarehouseDto>>> GetAllAsync(int pageNumber, int pageSize);
         Task<BaseResult<ResultWarehouseDto>> GetByIdAsync(int id);
         Task<BaseResult<ResultWarehouseDto>> CreateAsync(CreateWarehouseDto dto);
         Task<BaseResult<ResultWarehouseDto>> UpdateAsync(int id,UpdateWarehouseDto dto);

@@ -2,6 +2,7 @@
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
+using StockFlow.Application.DTOs.CategoryDtos;
 using StockFlow.Application.DTOs.SupplierDtos;
 using StockFlow.Application.Interfaces.Repositories;
 using StockFlow.Application.Interfaces.Services;
@@ -52,11 +53,19 @@ namespace StockFlow.Application.Services
             return BaseResult<bool>.Success(true);
         }
 
-        public async Task<BaseResult<IEnumerable<ResultSupplierDto>>> GetAllAsync()
+        public async Task<BaseResult<PagedResult<ResultSupplierDto>>> GetAllAsync(int pageNumber,int pageSize)
         {
-            var suppliers = await _genericRepository.GetAllAsync();
-            var mappedSuppliers = _mapper.Map<IEnumerable<ResultSupplierDto>>(suppliers);
-            return BaseResult<IEnumerable<ResultSupplierDto>>.Success(mappedSuppliers);
+            var pagedSuppliers = await _genericRepository.GetAllAsync(pageNumber,pageSize);
+            var mappedSuppliers = _mapper.Map<List<ResultSupplierDto>>(pagedSuppliers.Items);
+
+            var result = new PagedResult<ResultSupplierDto>
+            {
+                Items = mappedSuppliers,
+                PageNumber = pagedSuppliers.PageNumber,
+                PageSize = pagedSuppliers.PageSize,
+                TotalCount = pagedSuppliers.TotalCount
+            };
+            return BaseResult<PagedResult<ResultSupplierDto>>.Success(result);
         }
 
         public async Task<BaseResult<ResultSupplierDto>> GetByIdAsync(int id)

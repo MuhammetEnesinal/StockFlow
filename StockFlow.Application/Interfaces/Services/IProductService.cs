@@ -10,7 +10,7 @@ namespace StockFlow.Application.Interfaces.Services
 {
     public interface IProductService
     {
-        Task<BaseResult<IEnumerable<ResultProductDto>>> GetAllAsync();
+        Task<BaseResult<PagedResult<ResultProductDto>>> GetAllAsync(int pageNumber,int pageSize);
         Task<BaseResult<ResultProductDto>> GetByIdAsync(int id);
         Task<BaseResult<ResultProductDto>> CreateAsync(CreateProductDto dto);
         Task<BaseResult<ResultProductDto>> UpdateAsync(int id,UpdateProductDto dto);

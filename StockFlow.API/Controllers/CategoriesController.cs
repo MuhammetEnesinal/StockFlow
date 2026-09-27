@@ -12,9 +12,11 @@ namespace StockFlow.API.Controllers
     public class CategoriesController(ICategoryService _categoryService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
         {
-            var result = await _categoryService.GetAllAsync();
+            pageSize=Math.Min(pageSize,100);
+
+            var result = await _categoryService.GetAllAsync(pageNumber,pageSize);
             return HandleResult(result);
         }
 

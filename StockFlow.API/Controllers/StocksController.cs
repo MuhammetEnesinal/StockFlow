@@ -28,16 +28,18 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpGet("warehouse/{warehouseId}")]
-        public async Task<IActionResult> GetStockByWarehouseAsync(int warehouseId)
+        public async Task<IActionResult> GetStockByWarehouseAsync(int warehouseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _stockService.GetStockByWarehouseAsync(warehouseId);
+            pageSize = Math.Min(pageSize, 100);
+            var result = await _stockService.GetStockByWarehouseAsync(warehouseId, pageNumber, pageSize);
             return HandleResult(result);
         }
 
         [HttpGet("{productId}/{warehouseId}/movements")]
-        public async Task<IActionResult> GetMovementsAsync(int productId, int warehouseId)
+        public async Task<IActionResult> GetMovementsAsync(int productId, int warehouseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _stockService.GetMovementsAsync(productId, warehouseId);
+            pageSize = Math.Min(pageSize, 100);
+            var result = await _stockService.GetMovementsAsync(productId, warehouseId, pageNumber, pageSize);
             return HandleResult(result);
         }
 
@@ -58,9 +60,10 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpGet("warehouse/{warehouseId}/movements")]
-        public async Task<IActionResult> GetMovementsByWarehouseAsync(int warehouseId)
+        public async Task<IActionResult> GetMovementsByWarehouseAsync(int warehouseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _stockService.GetMovementsByWarehouseAsync(warehouseId);
+            pageSize = Math.Min(pageSize, 100);
+            var result = await _stockService.GetMovementsByWarehouseAsync(warehouseId, pageNumber, pageSize);
             return HandleResult(result);
         }
     }

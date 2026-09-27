@@ -1,4 +1,5 @@
-﻿using StockFlow.Domain.Common;
+﻿using StockFlow.Application.Common;
+using StockFlow.Domain.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace StockFlow.Application.Interfaces.Repositories
     public interface IGenericRepository<T> where T: BaseEntity
     {
         Task<T?> GetByIdAsync(int id);
-        Task<IEnumerable<T>> GetAllAsync();
+        Task<PagedResult<T>> GetAllAsync(int pageNumber, int pageSize);
         IQueryable<T> Query();
         Task AddAsync(T entity);
         void Update(T entity);

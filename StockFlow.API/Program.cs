@@ -14,6 +14,7 @@ using StockFlow.Application.Validators.CategoryValidators;
 using StockFlow.Domain.Entities;
 using StockFlow.Domain.Enums;
 using StockFlow.Infrastructure;
+using StockFlow.Infrastructure.BackgroundServices;
 using StockFlow.Infrastructure.Interceptors;
 using StockFlow.Infrastructure.Repositories;
 using StockFlow.Infrastructure.Services;
@@ -113,6 +114,9 @@ builder.Services.AddRateLimiter(options =>
 
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+builder.Services.AddHostedService<AuditLogCleanupService>();
+
 builder.Services.AddProblemDetails();
 
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
