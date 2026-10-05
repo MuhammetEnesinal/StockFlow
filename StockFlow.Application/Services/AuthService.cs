@@ -1,5 +1,6 @@
 ﻿using BCrypt.Net;
 using FluentValidation;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using StockFlow.Application.Common;
@@ -15,26 +16,28 @@ using StockFlow.Domain.Enums;
 
 namespace StockFlow.Application.Services
 {
-    public class AuthService(IGenericRepository<User> _userGenericRepository,ITokenService _tokenService,IValidator<LoginDto> _loginValidator,IConfiguration _configuration, IUnitOfWork _unitOfWork,ICurrentUserService _currentUserService) : IAuthService
+    public class AuthService(IGenericRepository<User> _userGenericRepository, ITokenService _tokenService, IValidator<LoginDto> _loginValidator, IConfiguration _configuration, IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService, IMapper _mapper) : IAuthService
     {
         public async Task<BaseResult<LoginResultDto>> LoginAsync(LoginDto loginDto)
         {
             loginDto.Email = loginDto.Email.Trim();
             loginDto.Password = loginDto.Password.Trim();
 
-            var validateResult =await _loginValidator.ValidateAsync(loginDto);
-            if (!validateResult.IsValid) {
+            var validateResult = await _loginValidator.ValidateAsync(loginDto);
+            if (!validateResult.IsValid)
+            {
 
                 return BaseResult<LoginResultDto>.Fail(validateResult.Errors);
-            
+
             }
 
             var user = await _userGenericRepository.Query()
                         .Include(x => x.Warehouse)
-                        .FirstOrDefaultAsync(x=>x.Email == loginDto.Email);
+                        .FirstOrDefaultAsync(x => x.Email == loginDto.Email);
 
-            if (user == null) {
-                return BaseResult<LoginResultDto>.Fail("Email veya şifre yanlış.",ResultErrorType.Unauthorized);
+            if (user == null)
+            {
+                return BaseResult<LoginResultDto>.Fail("Email veya şifre yanlış.", ResultErrorType.Unauthorized);
             }
 
             if (user.IsActive == false)
@@ -57,18 +60,7 @@ namespace StockFlow.Application.Services
 
             _userGenericRepository.Update(user);
 
-            var resultUserDto = new ResultUserDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                EmployeeCode = user.EmployeeCode,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role.ToString(),
-                IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                WarehouseName = user.Warehouse?.Name
-            };
+            var resultUserDto = _mapper.Map<ResultUserDto>(user);
             var expirationMinutes = int.Parse(_configuration["JwtSettings:ExpirationMinutes"]!);
 
             var loginResult = new LoginResultDto
@@ -80,10 +72,6 @@ namespace StockFlow.Application.Services
                 ExpiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes)
             };
 
-         
-
-           
-
             await _unitOfWork.SaveChangesAsync();
 
             return BaseResult<LoginResultDto>.Success(loginResult);
@@ -94,9 +82,9 @@ namespace StockFlow.Application.Services
             var userId = _currentUserService.GetUserId();
 
             var user = await _userGenericRepository.Query()
-                .FirstOrDefaultAsync(x=>x.Id == userId);
+                .FirstOrDefaultAsync(x => x.Id == userId);
 
-            if(user == null)
+            if (user == null)
             {
                 return BaseResult<bool>.Fail("Kullanıcı Bulunamadı.", ResultErrorType.NotFound);
             }
@@ -115,7 +103,8 @@ namespace StockFlow.Application.Services
                 .Include(x => x.Warehouse)
                 .FirstOrDefaultAsync(x => x.RefreshToken == refreshTokenDto.RefreshToken);
 
-            if (user == null) {
+            if (user == null)
+            {
 
                 return BaseResult<LoginResultDto>.Fail("Geçersiz Refresh token.", ResultErrorType.Unauthorized);
             }
@@ -135,19 +124,7 @@ namespace StockFlow.Application.Services
             _userGenericRepository.Update(user);
             await _unitOfWork.SaveChangesAsync();
 
-
-            var resultUserDto = new ResultUserDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                EmployeeCode = user.EmployeeCode,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role.ToString(),
-                IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                WarehouseName = user.Warehouse?.Name
-            };
+            var resultUserDto = _mapper.Map<ResultUserDto>(user);
             var expirationMinutes = int.Parse(_configuration["JwtSettings:ExpirationMinutes"]!);
 
             var loginResultDto = new LoginResultDto
@@ -159,7 +136,7 @@ namespace StockFlow.Application.Services
                 ExpiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes)
 
             };
-            
+
             return BaseResult<LoginResultDto>.Success(loginResultDto);
         }
     }

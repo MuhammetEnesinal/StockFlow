@@ -1,5 +1,6 @@
 ﻿using BCrypt.Net;
 using FluentValidation;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
 using StockFlow.Application.DTOs.UsersDtos;
@@ -19,6 +20,7 @@ namespace StockFlow.Application.Services
         IGenericRepository<User> _userGenericRepository,
         IGenericRepository<Warehouse> _warehouseGenericRepository,
         IUnitOfWork _unitOfWork,
+        IMapper _mapper,
         IValidator<CreateUserDto> _createValidator,
         IValidator<UpdateUserDto> _updateValidator, IValidator<ChangePasswordDto> _changePasswordValidator
         ) : IUserService
@@ -29,14 +31,15 @@ namespace StockFlow.Application.Services
             changePasswordDto.NewPassword = changePasswordDto.NewPassword.Trim();
 
             var user = await _userGenericRepository.GetByIdAsync(id);
-            if(user == null)
+            if (user == null)
             {
-                return BaseResult<bool>.Fail("Kullanıcı bulunamadı.",ResultErrorType.NotFound);
+                return BaseResult<bool>.Fail("Kullanıcı bulunamadı.", ResultErrorType.NotFound);
             }
 
 
             var validateResult = await _changePasswordValidator.ValidateAsync(changePasswordDto);
-            if (!validateResult.IsValid) {
+            if (!validateResult.IsValid)
+            {
 
                 return BaseResult<bool>.Fail(validateResult.Errors);
             }
@@ -181,27 +184,11 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var resultList = new List<ResultUserDto>();
-
-            foreach (var user in users)
-            {
-                resultList.Add(new ResultUserDto
-                {
-                    Id = user.Id,
-                    FullName = user.FullName,
-                    Email = user.Email,
-                    EmployeeCode = user.EmployeeCode,
-                    PhoneNumber = user.PhoneNumber,
-                    Role = user.Role.ToString(),
-                    IsActive = user.IsActive,
-                    WarehouseId = user.WarehouseId,
-                    WarehouseName = user.Warehouse?.Name
-                });
-            }
+            var mappedUsers = _mapper.Map<List<ResultUserDto>>(users);
 
             var result = new PagedResult<ResultUserDto>
             {
-                Items = resultList,
+                Items = mappedUsers,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -209,6 +196,7 @@ namespace StockFlow.Application.Services
 
             return BaseResult<PagedResult<ResultUserDto>>.Success(result);
         }
+
         public async Task<BaseResult<ResultUserDto>> GetByIdAsync(int id)
         {
             var user = await _userGenericRepository.Query()
@@ -222,19 +210,7 @@ namespace StockFlow.Application.Services
                     ResultErrorType.NotFound);
             }
 
-            var userDto = new ResultUserDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                EmployeeCode = user.EmployeeCode,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role.ToString(),
-                IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                WarehouseName = user.Warehouse?.Name
-            };
-
+            var userDto = _mapper.Map<ResultUserDto>(user);
             return BaseResult<ResultUserDto>.Success(userDto);
         }
 

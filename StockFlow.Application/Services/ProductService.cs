@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Services
 {
-    public class  ProductService(
+    public class ProductService(
     IGenericRepository<Product> _genericRepository,
     IGenericRepository<Category> _categoryRepository,
     IGenericRepository<Supplier> _supplierRepository,
@@ -59,12 +59,12 @@ namespace StockFlow.Application.Services
             await _unitOfWork.SaveChangesAsync();
 
             var resultDto = _mapper.Map<ResultProductDto>(mappedProduct);
-            resultDto.CategoryName = category.Name;        
-            resultDto.SupplierName = supplier?.Name;          
+            resultDto.CategoryName = category.Name;
+            resultDto.SupplierName = supplier?.Name;
             return BaseResult<ResultProductDto>.Success(resultDto);
         }
 
-        public  async Task<BaseResult<bool>> DeleteAsync(int id)
+        public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
             var product = await _genericRepository.Query()
                 .Include(p => p.Stocks)
@@ -75,12 +75,12 @@ namespace StockFlow.Application.Services
 
             if (product == null)
             {
-                return BaseResult<bool>.Fail("Ürün bulunamadı.",ResultErrorType.NotFound);
+                return BaseResult<bool>.Fail("Ürün bulunamadı.", ResultErrorType.NotFound);
             }
 
             if (product.Stocks.Any())
             {
-                return BaseResult<bool>.Fail("Ürüne ait stok kaydı var silinemez.",ResultErrorType.Conflict);
+                return BaseResult<bool>.Fail("Ürüne ait stok kaydı var silinemez.", ResultErrorType.Conflict);
             }
             if (product.StockMovements.Any())
             {
@@ -99,8 +99,8 @@ namespace StockFlow.Application.Services
             await _unitOfWork.SaveChangesAsync();
 
             return BaseResult<bool>.Success(true);
-                
-         }
+
+        }
 
         public async Task<BaseResult<PagedResult<ResultProductDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
@@ -115,13 +115,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var mappedProducts = products.Select(p =>
-            {
-                var dto = _mapper.Map<ResultProductDto>(p);
-                dto.CategoryName = p.Category.Name;
-                dto.SupplierName = p.Supplier?.Name;
-                return dto;
-            }).ToList();
+            var mappedProducts = _mapper.Map<List<ResultProductDto>>(products);
 
             var result = new PagedResult<ResultProductDto>
             {
@@ -145,24 +139,21 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultProductDto>.Fail("Ürün bulunamadı.", ResultErrorType.NotFound);
 
             var resultDto = _mapper.Map<ResultProductDto>(product);
-            resultDto.CategoryName = product.Category.Name;
-            resultDto.SupplierName = product.Supplier?.Name;
             return BaseResult<ResultProductDto>.Success(resultDto);
         }
-
         public async Task<BaseResult<ResultProductDto>> UpdateAsync(int id, UpdateProductDto dto)
         {
             dto.Name = dto.Name.Trim();
-            var valditeResult=await _updateValidator.ValidateAsync(dto);
+            var valditeResult = await _updateValidator.ValidateAsync(dto);
             if (!valditeResult.IsValid)
             {
-               return BaseResult<ResultProductDto>.Fail(valditeResult.Errors);
+                return BaseResult<ResultProductDto>.Fail(valditeResult.Errors);
             }
 
-            var product =await _genericRepository.GetByIdAsync(id);
-            if(product == null)
+            var product = await _genericRepository.GetByIdAsync(id);
+            if (product == null)
             {
-                return BaseResult<ResultProductDto>.Fail("Ürün bulunamadı.",ResultErrorType.NotFound);
+                return BaseResult<ResultProductDto>.Fail("Ürün bulunamadı.", ResultErrorType.NotFound);
             }
 
 

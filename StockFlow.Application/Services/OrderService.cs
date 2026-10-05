@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
 using StockFlow.Application.DTOs.OrderDtos;
@@ -20,11 +21,12 @@ namespace StockFlow.Application.Services
         IGenericRepository<StockMovement> _stockMovementRepository,
         IGenericRepository<User> _userRepository,
         IUnitOfWork _unitOfWork,
+        IMapper _mapper,
         IValidator<CreateOrderDto> _createValidator,
         IValidator<OrderItemRequestDto> _orderItemValidator,
         ICurrentUserService _currentUserService) : IOrderService
     {
-        
+
 
         public async Task<BaseResult<ResultOrderDto>> CreateAsync(CreateOrderDto dto)
         {
@@ -107,10 +109,10 @@ namespace StockFlow.Application.Services
                 {
                     stock = await _stockRepository.Query()
                         .FirstOrDefaultAsync(s => s.ProductId == item.ProductId && s.WarehouseId == item.WarehouseId);
-                    _stockRepository.Update(stock);
                     stockCache[key] = stock;
                 }
                 stock.Quantity -= item.Quantity;
+                _stockRepository.Update(stock);
 
                 var orderItem = new OrderItem
                 {
@@ -141,8 +143,8 @@ namespace StockFlow.Application.Services
                     WarehouseId = warehouse.Id,
                     WarehouseName = warehouse.Name,
                     Quantity = item.Quantity,
-                    UnitPrice = product.Price,
-                    LineTotal = item.Quantity * product.Price
+                    UnitPrice = product.Price
+
                 });
             }
 
@@ -155,7 +157,7 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<ResultOrderDto>.Fail("Oturum açan kullanıcı bulunamadı, lütfen tekrar giriş yapın.", ResultErrorType.Unauthorized);
             }
-            
+
 
             var result = new ResultOrderDto
             {
@@ -168,9 +170,9 @@ namespace StockFlow.Application.Services
                 CustomerEmail = customer.Email,
                 CustomerPhoneNumber = customer.PhoneNumber,
                 CreatedByUserId = _currentUserService.GetUserId(),
-                CreatedByUserName = currentUser.FullName,
-                CreatedByEmployeeCode= currentUser.EmployeeCode,
-                Items = resultItems
+                CreatedByUserFullName = currentUser.FullName,
+                CreatedByUserEmployeeCode = currentUser.EmployeeCode,
+                OrderItems = resultItems
             };
 
             return BaseResult<ResultOrderDto>.Success(result);
@@ -193,36 +195,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var resultItems = new List<ResultOrderDto>();
-
-            foreach (var order in orders)
-            {
-                var resultOrderDto = new ResultOrderDto
-                {
-                    Id = order.Id,
-                    OrderNumber = order.OrderNumber,
-                    Status = order.Status.ToString(),
-                    TotalAmount = order.TotalAmount,
-                    CustomerId = order.CustomerId,
-                    CustomerFullName = order.Customer.FullName,
-                    CustomerEmail = order.Customer.Email,
-                    CustomerPhoneNumber = order.Customer.PhoneNumber,
-                    CreatedByUserId = order.CreatedByUserId,
-                    CreatedByUserName = order.CreatedByUser.FullName,
-                    CreatedByEmployeeCode = order.CreatedByUser.EmployeeCode,
-                    Items = order.OrderItems.Select(oi => new ResultOrderItemDto
-                    {
-                        ProductId = oi.ProductId,
-                        ProductName = oi.Product.Name,
-                        WarehouseId = oi.WarehouseId,
-                        WarehouseName = oi.Warehouse.Name,
-                        Quantity = oi.Quantity,
-                        UnitPrice = oi.UnitPrice,
-                        LineTotal = oi.Quantity * oi.UnitPrice
-                    }).ToList()
-                };
-                resultItems.Add(resultOrderDto);
-            }
+            var resultItems = _mapper.Map<List<ResultOrderDto>>(orders);
 
             var result = new PagedResult<ResultOrderDto>
             {
@@ -251,31 +224,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultOrderDto>.Fail("Sipariş bulunamadı.", ResultErrorType.NotFound);
             }
 
-            var resultOrderDto = new ResultOrderDto
-            {
-                Id = order.Id,
-                OrderNumber = order.OrderNumber,
-                Status = order.Status.ToString(),
-                TotalAmount = order.TotalAmount,
-                CustomerId = order.CustomerId,
-                CustomerFullName = order.Customer.FullName,
-                CustomerEmail = order.Customer.Email,
-                CustomerPhoneNumber = order.Customer.PhoneNumber,
-                CreatedByUserId = order.CreatedByUserId,
-                CreatedByUserName = order.CreatedByUser.FullName,
-                CreatedByEmployeeCode = order.CreatedByUser.EmployeeCode,
-                Items = order.OrderItems.Select(oi => new ResultOrderItemDto
-                {
-                    ProductId = oi.ProductId,
-                    ProductName = oi.Product.Name,
-                    WarehouseId = oi.WarehouseId,
-                    WarehouseName = oi.Warehouse.Name,
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.UnitPrice,
-                    LineTotal = oi.Quantity * oi.UnitPrice
-                }).ToList()
-            };
-
+            var resultOrderDto = _mapper.Map<ResultOrderDto>(order);
             return BaseResult<ResultOrderDto>.Success(resultOrderDto);
         }
 
@@ -336,38 +285,14 @@ namespace StockFlow.Application.Services
                         ResultErrorType.BusinessRule);
                 }
             }
-            
+
 
 
             order.Status = newStatus;
             _orderRepository.Update(order);
             await _unitOfWork.SaveChangesAsync();
 
-            var resultOrderDto = new ResultOrderDto
-            {
-                Id = order.Id,
-                OrderNumber = order.OrderNumber,
-                Status = order.Status.ToString(),
-                TotalAmount = order.TotalAmount,
-                CustomerId = order.CustomerId,
-                CustomerFullName = order.Customer.FullName,
-                CustomerEmail = order.Customer.Email,
-                CustomerPhoneNumber = order.Customer.PhoneNumber,
-                CreatedByUserId = order.CreatedByUserId,
-                CreatedByUserName = order.CreatedByUser.FullName,
-                CreatedByEmployeeCode= order.CreatedByUser.EmployeeCode,
-                Items = order.OrderItems.Select(oi => new ResultOrderItemDto
-                {
-                    ProductId = oi.ProductId,
-                    ProductName = oi.Product.Name,
-                    WarehouseId = oi.WarehouseId,
-                    WarehouseName = oi.Warehouse.Name,
-                    Quantity = oi.Quantity,
-                    UnitPrice = oi.UnitPrice,
-                    LineTotal = oi.Quantity * oi.UnitPrice
-                }).ToList()
-            };
-
+            var resultOrderDto = _mapper.Map<ResultOrderDto>(order);
             return BaseResult<ResultOrderDto>.Success(resultOrderDto);
         }
 

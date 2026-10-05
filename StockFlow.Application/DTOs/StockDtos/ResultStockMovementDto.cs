@@ -1,6 +1,4 @@
-﻿
-
-namespace StockFlow.Application.DTOs.StockDtos
+﻿namespace StockFlow.Application.DTOs.StockDtos
 {
     public class ResultStockMovementDto
     {
@@ -9,11 +7,11 @@ namespace StockFlow.Application.DTOs.StockDtos
         public int WarehouseId { get; set; }
         public required string WarehouseName { get; set; }
         public required string Type { get; set; }
-        public  string? Note { get; set; }
+        public string? Note { get; set; }
         public int Quantity { get; set; }
         public int PerformedByUserId { get; set; }
-        public required string PerformedByUserName { get; set; }
-        public required string PerformedByEmployeeCode { get; set; }
+        public required string PerformedByUserFullName { get; set; }
+        public required string PerformedByUserEmployeeCode { get; set; }
 
         public DateTime? CreateAtTime { get; set; }
 

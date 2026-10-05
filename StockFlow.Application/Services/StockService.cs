@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
 using StockFlow.Application.DTOs.StockDtos;
@@ -17,13 +18,14 @@ namespace StockFlow.Application.Services
         IGenericRepository<Product> _productRepository,
         IGenericRepository<Warehouse> _warehouseRepository,
         IUnitOfWork _unitOfWork,
+        IMapper _mapper,
         IValidator<StockInDto> _stockInValidator,
         IValidator<StockOutDto> _stockOutValidator,
         IValidator<TransferDto> _transferValidator,
         IValidator<TransferBatchDto> _transferBatchValidator,
         ICurrentUserService _currentUserService) : IStockService
     {
-        
+
 
         public async Task<BaseResult<ResultStockDto>> StockInAsync(StockInDto stockInDto)
         {
@@ -164,6 +166,7 @@ namespace StockFlow.Application.Services
 
             var query = _stockRepository.Query()
                 .Include(s => s.Product)
+                .Include(s => s.Warehouse)
                 .Where(s => s.WarehouseId == warehouseId);
 
             var totalCount = await query.CountAsync();
@@ -173,14 +176,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var stockDtos = stocks.Select(s => new ResultStockDto
-            {
-                ProductId = s.ProductId,
-                ProductName = s.Product.Name,
-                WarehouseId = warehouse.Id,
-                WarehouseName = warehouse.Name,
-                Quantity = s.Quantity
-            }).ToList();
+            var stockDtos = _mapper.Map<List<ResultStockDto>>(stocks);
 
             var result = new PagedResult<ResultStockDto>
             {
@@ -205,6 +201,8 @@ namespace StockFlow.Application.Services
 
             var query = _stockMovementRepository.Query()
                 .Include(m => m.PerformedByUser)
+                .Include(m => m.Product)
+                .Include(m => m.Warehouse)
                 .Where(m => m.ProductId == productId && m.WarehouseId == warehouseId)
                 .OrderByDescending(m => m.CreateAtTime);
 
@@ -215,20 +213,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var mappedMovements = movements.Select(m => new ResultStockMovementDto
-            {
-                ProductId = product.Id,
-                ProductName = product.Name,
-                WarehouseId = warehouse.Id,
-                WarehouseName = warehouse.Name,
-                Type = m.Type.ToString(),
-                Note = m.Note,
-                Quantity = m.Quantity,
-                PerformedByUserId = m.PerformedByUserId,
-                PerformedByUserName = m.PerformedByUser.FullName,
-                PerformedByEmployeeCode = m.PerformedByUser.EmployeeCode,
-                CreateAtTime = m.CreateAtTime
-            }).ToList();
+            var mappedMovements = _mapper.Map<List<ResultStockMovementDto>>(movements);   
 
             var result = new PagedResult<ResultStockMovementDto>
             {
@@ -414,6 +399,7 @@ namespace StockFlow.Application.Services
 
             var resultList = new List<ResultTransferDto>();
             var stockCache = new Dictionary<(int ProductId, int WarehouseId), Stock>();
+            var newStockKeys = new HashSet<(int ProductId, int WarehouseId)>();   
 
             foreach (var transfer in transferBatchDto.Transfers)
             {
@@ -426,10 +412,10 @@ namespace StockFlow.Application.Services
                 {
                     sourceStock = await _stockRepository.Query()
                         .FirstOrDefaultAsync(s => s.ProductId == transfer.ProductId && s.WarehouseId == transfer.SourceWarehouseId);
-                    _stockRepository.Update(sourceStock);
-                    stockCache[sourceKey] = sourceStock;
+                    stockCache[sourceKey] = sourceStock;                         
                 }
                 sourceStock.Quantity -= transfer.Quantity;
+                _stockRepository.Update(sourceStock);                            
 
                 var targetKey = (transfer.ProductId, transfer.TargetWarehouseId);
                 if (!stockCache.TryGetValue(targetKey, out var targetStock))
@@ -446,14 +432,15 @@ namespace StockFlow.Application.Services
                             Quantity = 0
                         };
                         await _stockRepository.AddAsync(targetStock);
+                        newStockKeys.Add(targetKey);                              // <-- YENİ: izlenen yeni kayıt, Update gerekmez
                     }
-                    else
-                    {
-                        _stockRepository.Update(targetStock);
-                    }
-                    stockCache[targetKey] = targetStock;
+                    stockCache[targetKey] = targetStock;                          // <-- DEĞİŞTİ: else içindeki Update kalktı
                 }
                 targetStock.Quantity += transfer.Quantity;
+                if (!newStockKeys.Contains(targetKey))
+                {
+                    _stockRepository.Update(targetStock);                         // <-- YENİ: var olan hedef stok için, artıştan SONRA
+                }
 
                 var transferGroupId = Guid.NewGuid();
 
@@ -508,6 +495,7 @@ namespace StockFlow.Application.Services
             var query = _stockMovementRepository.Query()
                 .Include(m => m.PerformedByUser)
                 .Include(m => m.Product)
+                .Include(m => m.Warehouse)
                 .Where(m => m.WarehouseId == warehouseId)
                 .OrderByDescending(m => m.CreateAtTime);
 
@@ -518,20 +506,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var mappedMovements = movements.Select(m => new ResultStockMovementDto
-            {
-                ProductId = m.ProductId,
-                ProductName = m.Product.Name,
-                WarehouseId = warehouse.Id,
-                WarehouseName = warehouse.Name,
-                Type = m.Type.ToString(),
-                Note = m.Note,
-                Quantity = m.Quantity,
-                PerformedByUserId = m.PerformedByUserId,
-                PerformedByUserName = m.PerformedByUser.FullName,
-                PerformedByEmployeeCode = m.PerformedByUser.EmployeeCode,
-                CreateAtTime = m.CreateAtTime
-            }).ToList();
+            var mappedMovements = _mapper.Map<List<ResultStockMovementDto>>(movements);   
 
             var result = new PagedResult<ResultStockMovementDto>
             {

@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
 using StockFlow.Application.DTOs.PurchaseOrderDtos;
@@ -25,6 +26,7 @@ namespace StockFlow.Application.Services
         IGenericRepository<StockMovement> _stockMovementRepository,
         IGenericRepository<Product> _productRepository,
         IGenericRepository<Warehouse> _warehouseRepository,
+        IMapper _mapper,
         IValidator<ReceiveDto> _receiveValidator,
         IValidator<CreatePurchaseOrderDto> _createPurchaseOrderValidator,
         IValidator<ReceiveItemDto> _receiveItemValidator,
@@ -148,8 +150,8 @@ namespace StockFlow.Application.Services
                 WarehouseId = warehouse.Id,
                 WarehouseName = warehouse.Name,
                 CreatedByUserId = currentUser.Id,
-                CreatedByUserName = currentUser.FullName,
-                CreatedByEmployeeCode = currentUser.EmployeeCode,
+                CreatedByUserFullName = currentUser.FullName,
+                CreatedByUserEmployeeCode = currentUser.EmployeeCode,
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
                 Items = resultItems
@@ -174,37 +176,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var resultList = new List<ResultPurchaseOrderDto>();
-
-            foreach (var purchaseOrder in purchaseOrders)
-            {
-                var resultDto = new ResultPurchaseOrderDto
-                {
-                    Id = purchaseOrder.Id,
-                    PurchaseOrderNumber = purchaseOrder.PurchaseOrderNumber,
-                    Status = purchaseOrder.Status.ToString(),
-                    SupplierId = purchaseOrder.SupplierId,
-                    SupplierName = purchaseOrder.Supplier.Name,
-                    WarehouseId = purchaseOrder.WarehouseId,
-                    WarehouseName = purchaseOrder.Warehouse.Name,
-                    CreatedByUserId = purchaseOrder.CreatedByUserId,
-                    CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
-                    CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
-                    SentAt = purchaseOrder.SentAt,
-                    ReceivedAt = purchaseOrder.ReceivedAt,
-                    Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
-                    {
-                        Id = item.Id,
-                        ProductId = item.ProductId,
-                        ProductName = item.Product.Name,
-                        OrderedQuantity = item.OrderedQuantity,
-                        ReceivedQuantity = item.ReceivedQuantity,
-                        UnitPrice = item.UnitPrice
-                    }).ToList()
-                };
-
-                resultList.Add(resultDto);
-            }
+            var resultList = _mapper.Map<List<ResultPurchaseOrderDto>>(purchaseOrders);
 
             var result = new PagedResult<ResultPurchaseOrderDto>
             {
@@ -231,31 +203,8 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<ResultPurchaseOrderDto>.Fail("Satın alma siparişi bulunamadı", ResultErrorType.NotFound);
             }
-            var resultDto = new ResultPurchaseOrderDto
-            {
-                Id = purchaseOrder.Id,
-                PurchaseOrderNumber = purchaseOrder.PurchaseOrderNumber,
-                Status = purchaseOrder.Status.ToString(),
-                SupplierId = purchaseOrder.SupplierId,
-                SupplierName = purchaseOrder.Supplier.Name,
-                WarehouseId = purchaseOrder.WarehouseId,
-                WarehouseName = purchaseOrder.Warehouse.Name,
-                CreatedByUserId = purchaseOrder.CreatedByUserId,
-                CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
-                CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
-                SentAt = purchaseOrder.SentAt,
-                ReceivedAt = purchaseOrder.ReceivedAt,
-                Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
-                {
-                    Id = item.Id,
-                    ProductId = item.ProductId,
-                    ProductName = item.Product.Name,
-                    OrderedQuantity = item.OrderedQuantity,
-                    ReceivedQuantity = item.ReceivedQuantity,
-                    UnitPrice = item.UnitPrice
-                }).ToList()
-            };
 
+            var resultDto = _mapper.Map<ResultPurchaseOrderDto>(purchaseOrder);
             return BaseResult<ResultPurchaseOrderDto>.Success(resultDto);
         }
 
@@ -282,37 +231,7 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var resultList = new List<ResultPurchaseOrderDto>();
-
-            foreach (var purchaseOrder in purchaseOrders)
-            {
-                var resultDto = new ResultPurchaseOrderDto
-                {
-                    Id = purchaseOrder.Id,
-                    PurchaseOrderNumber = purchaseOrder.PurchaseOrderNumber,
-                    Status = purchaseOrder.Status.ToString(),
-                    SupplierId = purchaseOrder.SupplierId,
-                    SupplierName = purchaseOrder.Supplier.Name,
-                    WarehouseId = purchaseOrder.WarehouseId,
-                    WarehouseName = purchaseOrder.Warehouse.Name,
-                    CreatedByUserId = purchaseOrder.CreatedByUserId,
-                    CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
-                    CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
-                    SentAt = purchaseOrder.SentAt,
-                    ReceivedAt = purchaseOrder.ReceivedAt,
-                    Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
-                    {
-                        Id = item.Id,
-                        ProductId = item.ProductId,
-                        ProductName = item.Product.Name,
-                        OrderedQuantity = item.OrderedQuantity,
-                        ReceivedQuantity = item.ReceivedQuantity,
-                        UnitPrice = item.UnitPrice
-                    }).ToList()
-                };
-
-                resultList.Add(resultDto);
-            }
+            var resultList = _mapper.Map<List<ResultPurchaseOrderDto>>(purchaseOrders);
 
             var result = new PagedResult<ResultPurchaseOrderDto>
             {
@@ -393,6 +312,7 @@ namespace StockFlow.Application.Services
             {
                 var purchaseOrderItem = purchaseOrder.Items.FirstOrDefault(x => x.Id == receiveItem.PurchaseOrderItemId);
                 purchaseOrderItem.ReceivedQuantity += receiveItem.ReceivedQuantity;
+                _purchaseOrderItemRepository.Update(purchaseOrderItem);   // <-- YENİ: kalem izlenmiyor, ayrıca kaydedilmeli
 
                 var stock = await _stockRepository.Query()
                     .FirstOrDefaultAsync(s => s.ProductId == purchaseOrderItem.ProductId && s.WarehouseId == purchaseOrder.WarehouseId);
@@ -440,31 +360,7 @@ namespace StockFlow.Application.Services
             _purchaseOrderRepository.Update(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
 
-            var resultDto = new ResultPurchaseOrderDto
-            {
-                Id = purchaseOrder.Id,
-                PurchaseOrderNumber = purchaseOrder.PurchaseOrderNumber,
-                Status = purchaseOrder.Status.ToString(),
-                SupplierId = purchaseOrder.SupplierId,
-                SupplierName = purchaseOrder.Supplier.Name,
-                WarehouseId = purchaseOrder.WarehouseId,
-                WarehouseName = purchaseOrder.Warehouse.Name,
-                CreatedByUserId = purchaseOrder.CreatedByUserId,
-                CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
-                CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
-                SentAt = purchaseOrder.SentAt,
-                ReceivedAt = purchaseOrder.ReceivedAt,
-                Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
-                {
-                    Id = item.Id,
-                    ProductId = item.ProductId,
-                    ProductName = item.Product.Name,
-                    OrderedQuantity = item.OrderedQuantity,
-                    ReceivedQuantity = item.ReceivedQuantity,
-                    UnitPrice = item.UnitPrice
-                }).ToList()
-            };
-
+            var resultDto = _mapper.Map<ResultPurchaseOrderDto>(purchaseOrder);
             return BaseResult<ResultPurchaseOrderDto>.Success(resultDto);
         }
 
@@ -493,30 +389,7 @@ namespace StockFlow.Application.Services
             _purchaseOrderRepository.Update(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
 
-            var resultDto = new ResultPurchaseOrderDto
-            {
-                Id = purchaseOrder.Id,
-                PurchaseOrderNumber = purchaseOrder.PurchaseOrderNumber,
-                Status = purchaseOrder.Status.ToString(),
-                SupplierId = purchaseOrder.SupplierId,
-                SupplierName = purchaseOrder.Supplier.Name,
-                WarehouseId = purchaseOrder.WarehouseId,
-                WarehouseName = purchaseOrder.Warehouse.Name,
-                CreatedByUserId = purchaseOrder.CreatedByUserId,
-                CreatedByUserName = purchaseOrder.CreatedByUser.FullName,
-                CreatedByEmployeeCode = purchaseOrder.CreatedByUser.EmployeeCode,
-                SentAt = purchaseOrder.SentAt,
-                ReceivedAt = purchaseOrder.ReceivedAt,
-                Items = purchaseOrder.Items.Select(item => new ResultPurchaseOrderItemDto
-                {
-                    Id = item.Id,
-                    ProductId = item.ProductId,
-                    ProductName = item.Product.Name,
-                    OrderedQuantity = item.OrderedQuantity,
-                    ReceivedQuantity = item.ReceivedQuantity,
-                    UnitPrice = item.UnitPrice
-                }).ToList()
-            };
+            var resultDto = _mapper.Map<ResultPurchaseOrderDto>(purchaseOrder);
             return BaseResult<ResultPurchaseOrderDto>.Success(resultDto);
         }
     }

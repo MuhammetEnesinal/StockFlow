@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
 using StockFlow.Application.DTOs.AuditLogDtos;
 using StockFlow.Application.Interfaces.Repositories;
@@ -8,34 +9,17 @@ using StockFlow.Domain.Entities;
 
 namespace StockFlow.Application.Services
 {
-    public class AuditLogService(IGenericRepository<AuditLog> _auditlogRepository) : IAuditLogService
+    public class AuditLogService(IGenericRepository<AuditLog> _auditlogRepository, IMapper _mapper) : IAuditLogService
     {
         public async Task<BaseResult<PagedResult<ResultAuditLogDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
             var pagedAuditLogs = await _auditlogRepository.GetAllAsync(pageNumber, pageSize);
-            var resultItems = new List<ResultAuditLogDto>();
 
-            foreach (var auditLog in pagedAuditLogs.Items)
-            {
-                var resultAuditLog = new ResultAuditLogDto
-                {
-                    Id = auditLog.Id,
-                    EntityName = auditLog.EntityName,
-                    EntityId = auditLog.EntityId,
-                    Action = auditLog.Action.ToString(),
-                    PerformedByUserId = auditLog.PerformedByUserId,
-                    PerformedByUserName = auditLog.PerformedByUserName,
-                    PerformedByEmployeeCode = auditLog.PerformedByEmployeeCode,
-                    Changes = auditLog.Changes,
-                    CreateAtTime = auditLog.CreateAtTime,
-                };
-
-                resultItems.Add(resultAuditLog);
-            }
+            var mappedItems = _mapper.Map<List<ResultAuditLogDto>>(pagedAuditLogs.Items);
 
             var result = new PagedResult<ResultAuditLogDto>
             {
-                Items = resultItems,
+                Items = mappedItems,
                 PageNumber = pagedAuditLogs.PageNumber,
                 PageSize = pagedAuditLogs.PageSize,
                 TotalCount = pagedAuditLogs.TotalCount
@@ -58,29 +42,11 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var resultItems = new List<ResultAuditLogDto>();
-
-            foreach (var auditLog in auditLogs)
-            {
-                var resultAuditLog = new ResultAuditLogDto
-                {
-                    Id = auditLog.Id,
-                    EntityName = auditLog.EntityName,
-                    EntityId = auditLog.EntityId,
-                    Action = auditLog.Action.ToString(),
-                    PerformedByUserId = auditLog.PerformedByUserId,
-                    PerformedByUserName = auditLog.PerformedByUserName,
-                    PerformedByEmployeeCode = auditLog.PerformedByEmployeeCode,
-                    Changes = auditLog.Changes,
-                    CreateAtTime = auditLog.CreateAtTime,
-                };
-
-                resultItems.Add(resultAuditLog);
-            }
+            var mappedItems = _mapper.Map<List<ResultAuditLogDto>>(auditLogs);
 
             var result = new PagedResult<ResultAuditLogDto>
             {
-                Items = resultItems,
+                Items = mappedItems,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -101,29 +67,11 @@ namespace StockFlow.Application.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var resultItems = new List<ResultAuditLogDto>();
-
-            foreach (var auditLog in auditLogs)
-            {
-                var resultAuditLog = new ResultAuditLogDto
-                {
-                    Id = auditLog.Id,
-                    EntityName = auditLog.EntityName,
-                    EntityId = auditLog.EntityId,
-                    Action = auditLog.Action.ToString(),
-                    PerformedByUserId = auditLog.PerformedByUserId,
-                    PerformedByUserName = auditLog.PerformedByUserName,
-                    PerformedByEmployeeCode = auditLog.PerformedByEmployeeCode,
-                    Changes = auditLog.Changes,
-                    CreateAtTime = auditLog.CreateAtTime,
-                };
-
-                resultItems.Add(resultAuditLog);
-            }
+            var mappedItems = _mapper.Map<List<ResultAuditLogDto>>(auditLogs);
 
             var result = new PagedResult<ResultAuditLogDto>
             {
-                Items = resultItems,
+                Items = mappedItems,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -131,7 +79,5 @@ namespace StockFlow.Application.Services
 
             return BaseResult<PagedResult<ResultAuditLogDto>>.Success(result);
         }
-
-
     }
 }
