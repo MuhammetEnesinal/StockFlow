@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
@@ -162,29 +162,14 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultPurchaseOrderDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _purchaseOrderRepository.Query()
-               .Include(po => po.Supplier)
-               .Include(po => po.Warehouse)
-               .Include(po => po.CreatedByUser)
-               .Include(po => po.Items)
-                   .ThenInclude(poi => poi.Product);
-
-            var totalCount = await query.CountAsync();
-
-            var purchaseOrders = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var resultList = _mapper.Map<List<ResultPurchaseOrderDto>>(purchaseOrders);
-
-            var result = new PagedResult<ResultPurchaseOrderDto>
-            {
-                Items = resultList,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _purchaseOrderRepository.GetAllAsync(pageNumber, pageSize,
+                include: q => q
+                    .Include(po => po.Supplier)
+                    .Include(po => po.Warehouse)
+                    .Include(po => po.CreatedByUser)
+                    .Include(po => po.Items)
+                        .ThenInclude(poi => poi.Product));
+            var result = _mapper.Map<PagedResult<ResultPurchaseOrderDto>>(paged);
 
             return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Success(result);
         }
@@ -216,30 +201,15 @@ namespace StockFlow.Application.Services
                 return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Fail("Tedarikçi bulunamadı", ResultErrorType.NotFound);
             }
 
-            var query = _purchaseOrderRepository.Query()
-                .Include(po => po.Supplier)
-                .Include(po => po.Warehouse)
-                .Include(po => po.CreatedByUser)
-                .Include(po => po.Items)
-                    .ThenInclude(poi => poi.Product)
-                .Where(po => po.SupplierId == supplierId);
-
-            var totalCount = await query.CountAsync();
-
-            var purchaseOrders = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var resultList = _mapper.Map<List<ResultPurchaseOrderDto>>(purchaseOrders);
-
-            var result = new PagedResult<ResultPurchaseOrderDto>
-            {
-                Items = resultList,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _purchaseOrderRepository.GetAllAsync(pageNumber, pageSize,
+                filter: po => po.SupplierId == supplierId,
+                include: q => q
+                    .Include(po => po.Supplier)
+                    .Include(po => po.Warehouse)
+                    .Include(po => po.CreatedByUser)
+                    .Include(po => po.Items)
+                        .ThenInclude(poi => poi.Product));
+            var result = _mapper.Map<PagedResult<ResultPurchaseOrderDto>>(paged);
 
             return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Success(result);
         }

@@ -1,4 +1,4 @@
-﻿using BCrypt.Net;
+using BCrypt.Net;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -174,25 +174,9 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultUserDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _userGenericRepository.Query()
-                .Include(u => u.Warehouse);
-
-            var totalCount = await query.CountAsync();
-
-            var users = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var mappedUsers = _mapper.Map<List<ResultUserDto>>(users);
-
-            var result = new PagedResult<ResultUserDto>
-            {
-                Items = mappedUsers,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _userGenericRepository.GetAllAsync(pageNumber, pageSize,
+                include: q => q.Include(u => u.Warehouse));
+            var result = _mapper.Map<PagedResult<ResultUserDto>>(paged);
 
             return BaseResult<PagedResult<ResultUserDto>>.Success(result);
         }

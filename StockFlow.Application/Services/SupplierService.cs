@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
@@ -55,16 +55,9 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultSupplierDto>>> GetAllAsync(int pageNumber,int pageSize)
         {
-            var pagedSuppliers = await _genericRepository.GetAllAsync(pageNumber,pageSize);
-            var mappedSuppliers = _mapper.Map<List<ResultSupplierDto>>(pagedSuppliers.Items);
+            var paged = await _genericRepository.GetAllAsync(pageNumber, pageSize);
+            var result = _mapper.Map<PagedResult<ResultSupplierDto>>(paged);
 
-            var result = new PagedResult<ResultSupplierDto>
-            {
-                Items = mappedSuppliers,
-                PageNumber = pagedSuppliers.PageNumber,
-                PageSize = pagedSuppliers.PageSize,
-                TotalCount = pagedSuppliers.TotalCount
-            };
             return BaseResult<PagedResult<ResultSupplierDto>>.Success(result);
         }
 

@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
@@ -180,30 +180,15 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultOrderDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
-            var query = _orderRepository.Query()
-                .Include(o => o.Customer)
-                .Include(o => o.CreatedByUser)
-                .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
-                .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Warehouse);
-
-            var totalCount = await query.CountAsync();
-
-            var orders = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var resultItems = _mapper.Map<List<ResultOrderDto>>(orders);
-
-            var result = new PagedResult<ResultOrderDto>
-            {
-                Items = resultItems,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _orderRepository.GetAllAsync(pageNumber, pageSize,
+                include: q => q
+                    .Include(o => o.Customer)
+                    .Include(o => o.CreatedByUser)
+                    .Include(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Product)
+                    .Include(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Warehouse));
+            var result = _mapper.Map<PagedResult<ResultOrderDto>>(paged);
 
             return BaseResult<PagedResult<ResultOrderDto>>.Success(result);
         }

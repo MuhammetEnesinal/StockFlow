@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
@@ -164,27 +164,12 @@ namespace StockFlow.Application.Services
                 return BaseResult<PagedResult<ResultStockDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
             }
 
-            var query = _stockRepository.Query()
-                .Include(s => s.Product)
-                .Include(s => s.Warehouse)
-                .Where(s => s.WarehouseId == warehouseId);
-
-            var totalCount = await query.CountAsync();
-
-            var stocks = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var stockDtos = _mapper.Map<List<ResultStockDto>>(stocks);
-
-            var result = new PagedResult<ResultStockDto>
-            {
-                Items = stockDtos,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _stockRepository.GetAllAsync(pageNumber, pageSize,
+                filter: s => s.WarehouseId == warehouseId,
+                include: q => q
+                    .Include(s => s.Product)
+                    .Include(s => s.Warehouse));
+            var result = _mapper.Map<PagedResult<ResultStockDto>>(paged);
 
             return BaseResult<PagedResult<ResultStockDto>>.Success(result);
         }
@@ -199,29 +184,14 @@ namespace StockFlow.Application.Services
             if (warehouse == null)
                 return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
 
-            var query = _stockMovementRepository.Query()
-                .Include(m => m.PerformedByUser)
-                .Include(m => m.Product)
-                .Include(m => m.Warehouse)
-                .Where(m => m.ProductId == productId && m.WarehouseId == warehouseId)
-                .OrderByDescending(m => m.CreateAtTime);
-
-            var totalCount = await query.CountAsync();
-
-            var movements = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var mappedMovements = _mapper.Map<List<ResultStockMovementDto>>(movements);   
-
-            var result = new PagedResult<ResultStockMovementDto>
-            {
-                Items = mappedMovements,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _stockMovementRepository.GetAllAsync(pageNumber, pageSize,
+                filter: m => m.ProductId == productId && m.WarehouseId == warehouseId,
+                include: q => q
+                    .Include(m => m.PerformedByUser)
+                    .Include(m => m.Product)
+                    .Include(m => m.Warehouse),
+                orderBy: q => q.OrderByDescending(m => m.CreateAtTime));
+            var result = _mapper.Map<PagedResult<ResultStockMovementDto>>(paged);
 
             return BaseResult<PagedResult<ResultStockMovementDto>>.Success(result);
         }
@@ -432,14 +402,14 @@ namespace StockFlow.Application.Services
                             Quantity = 0
                         };
                         await _stockRepository.AddAsync(targetStock);
-                        newStockKeys.Add(targetKey);                              // <-- YENİ: izlenen yeni kayıt, Update gerekmez
+                        newStockKeys.Add(targetKey);                             
                     }
-                    stockCache[targetKey] = targetStock;                          // <-- DEĞİŞTİ: else içindeki Update kalktı
+                    stockCache[targetKey] = targetStock;                       
                 }
                 targetStock.Quantity += transfer.Quantity;
                 if (!newStockKeys.Contains(targetKey))
                 {
-                    _stockRepository.Update(targetStock);                         // <-- YENİ: var olan hedef stok için, artıştan SONRA
+                    _stockRepository.Update(targetStock);                        
                 }
 
                 var transferGroupId = Guid.NewGuid();
@@ -492,29 +462,14 @@ namespace StockFlow.Application.Services
             if (warehouse == null)
                 return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
 
-            var query = _stockMovementRepository.Query()
-                .Include(m => m.PerformedByUser)
-                .Include(m => m.Product)
-                .Include(m => m.Warehouse)
-                .Where(m => m.WarehouseId == warehouseId)
-                .OrderByDescending(m => m.CreateAtTime);
-
-            var totalCount = await query.CountAsync();
-
-            var movements = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var mappedMovements = _mapper.Map<List<ResultStockMovementDto>>(movements);   
-
-            var result = new PagedResult<ResultStockMovementDto>
-            {
-                Items = mappedMovements,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            var paged = await _stockMovementRepository.GetAllAsync(pageNumber, pageSize,
+                filter: m => m.WarehouseId == warehouseId,
+                include: q => q
+                    .Include(m => m.PerformedByUser)
+                    .Include(m => m.Product)
+                    .Include(m => m.Warehouse),
+                orderBy: q => q.OrderByDescending(m => m.CreateAtTime));
+            var result = _mapper.Map<PagedResult<ResultStockMovementDto>>(paged);
 
             return BaseResult<PagedResult<ResultStockMovementDto>>.Success(result);
         }

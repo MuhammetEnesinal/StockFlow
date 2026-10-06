@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.StockDtos;
 using StockFlow.Application.DTOs.TransferDtos;
@@ -30,7 +30,6 @@ namespace StockFlow.API.Controllers
         [HttpGet("warehouse/{warehouseId}")]
         public async Task<IActionResult> GetStockByWarehouseAsync(int warehouseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var result = await _stockService.GetStockByWarehouseAsync(warehouseId, pageNumber, pageSize);
             return HandleResult(result);
         }
@@ -38,7 +37,6 @@ namespace StockFlow.API.Controllers
         [HttpGet("{productId}/{warehouseId}/movements")]
         public async Task<IActionResult> GetMovementsAsync(int productId, int warehouseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var result = await _stockService.GetMovementsAsync(productId, warehouseId, pageNumber, pageSize);
             return HandleResult(result);
         }
@@ -62,7 +60,6 @@ namespace StockFlow.API.Controllers
         [HttpGet("warehouse/{warehouseId}/movements")]
         public async Task<IActionResult> GetMovementsByWarehouseAsync(int warehouseId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var result = await _stockService.GetMovementsByWarehouseAsync(warehouseId, pageNumber, pageSize);
             return HandleResult(result);
         }

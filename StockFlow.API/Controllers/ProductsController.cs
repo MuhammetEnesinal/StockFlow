@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.ProductDtos;
@@ -15,7 +15,6 @@ namespace StockFlow.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber=1, [FromQuery] int pageSize=10)
         {
-            pageSize=Math.Min(pageSize, 100);
             var result = await _productService.GetAllAsync(pageNumber,pageSize);
             return HandleResult(result);
         }

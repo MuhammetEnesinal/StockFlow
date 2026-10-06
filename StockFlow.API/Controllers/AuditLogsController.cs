@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.Interfaces.Services;
@@ -15,7 +15,6 @@ namespace StockFlow.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var auditLogs = await _auditLogService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(auditLogs);
         }
@@ -24,7 +23,6 @@ namespace StockFlow.API.Controllers
         [HttpGet("entity/{entityName}")]
         public async Task<IActionResult> GetByEntityNameAsync(string entityName, [FromQuery] int pageNumber=1 , [FromQuery] int pageSize=10)
         {
-            pageSize= Math.Min(pageSize, 100);
             var auditLogs = await _auditLogService.GetByEntityNameAsync(entityName, pageNumber, pageSize);
             return HandleResult(auditLogs);
         }
@@ -33,7 +31,6 @@ namespace StockFlow.API.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetByUserIdAsync(int userId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var auditLogs = await _auditLogService.GetByUserIdAsync(userId, pageNumber, pageSize);
             return HandleResult(auditLogs);
         }

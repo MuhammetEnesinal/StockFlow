@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.PurchaseOrderDtos;
 using StockFlow.Application.Interfaces.Services;
@@ -13,7 +13,6 @@ namespace StockFlow.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var result = await _purchaseOrderService.GetAllAsync(pageNumber,pageSize);
             return HandleResult(result);
         }
@@ -60,7 +59,6 @@ namespace StockFlow.API.Controllers
         [HttpGet("supplier/{supplierId}")]
         public async Task<IActionResult> GetBySupplierAsync(int supplierId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            pageSize = Math.Min(pageSize, 100);
             var result = await _purchaseOrderService.GetBySupplierAsync(supplierId, pageNumber, pageSize);
             return HandleResult(result);
         }
