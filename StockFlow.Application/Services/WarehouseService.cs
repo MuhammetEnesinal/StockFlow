@@ -31,32 +31,43 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
-            var warehouse = await _genericRepository.Query()
-                .Include(s => s.Stocks)
-                .Include(s => s.StockMovements)
-                .Include(o => o.OrderItems)
-                .Include(p => p.PurchaseOrders)
-                .FirstOrDefaultAsync(w => w.Id == id);
+            var check = await _genericRepository.Query()
+                .Where(w => w.Id == id)
+                .Select(w => new
+                {
+                    Warehouse = w,
+                    HasStocks = w.Stocks.Any(),
+                    HasStockMovements = w.StockMovements.Any(),
+                    HasOrderItems = w.OrderItems.Any(),
+                    HasPurchaseOrders = w.PurchaseOrders.Any(),
+                    HasUsers = w.Users.Any()
+                })
+                .FirstOrDefaultAsync();
 
-            if (warehouse == null)
+            if (check == null)
             {
                 return BaseResult<bool>.Fail("Depo bulunamadı.", ResultErrorType.NotFound);
             }
-            if (warehouse.Stocks.Any())
+            var warehouse = check.Warehouse;
+            if (check.HasStocks)
             {
                 return BaseResult<bool>.Fail("Bu depoda hâlâ stok var, önce stokları boşaltın.", ResultErrorType.Conflict);
             }
-            if (warehouse.StockMovements.Any())
+            if (check.HasStockMovements)
             {
                 return BaseResult<bool>.Fail("Bu depoya ait stok hareketi geçmişi var, depo silinemez.", ResultErrorType.Conflict);
             }
-            if (warehouse.OrderItems.Any())
+            if (check.HasOrderItems)
             {
                 return BaseResult<bool>.Fail("Bu depoya bağlı sipariş kalemleri var, depo silinemez.", ResultErrorType.Conflict);
             }
-            if (warehouse.PurchaseOrders.Any())
+            if (check.HasPurchaseOrders)
             {
                 return BaseResult<bool>.Fail("Bu depoya bağlı satın alma siparişleri var, depo silinemez.", ResultErrorType.Conflict);
+            }
+            if (check.HasUsers)
+            {
+                return BaseResult<bool>.Fail("Bu depoya atanmış kullanıcılar var, önce kullanıcıları başka depoya taşıyın.", ResultErrorType.Conflict);
             }
 
             _genericRepository.Delete(warehouse);
@@ -64,7 +75,7 @@ namespace StockFlow.Application.Services
             return BaseResult<bool>.Success(true);
         }
 
-        public async Task<BaseResult<PagedResult<ResultWarehouseDto>>> GetAllAsync(int pageNumber,int pageSize)
+        public async Task<BaseResult<PagedResult<ResultWarehouseDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
             var paged = await _genericRepository.GetAllAsync(pageNumber, pageSize);
             var mappedItems = _mapper.Map<List<ResultWarehouseDto>>(paged.Items);
@@ -101,14 +112,14 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultWarehouseDto>.Fail(validationResult.Errors);
             }
 
-            var warehouse = await _genericRepository.GetByIdAsync(id);
+            var warehouse = await _genericRepository.QueryForUpdate()
+                .FirstOrDefaultAsync(w => w.Id == id);
             if (warehouse == null)
             {
                 return BaseResult<ResultWarehouseDto>.Fail("Güncellenecek depo bulunamadı.", ResultErrorType.NotFound);
             }
 
             _mapper.Map(dto, warehouse);
-            _genericRepository.Update(warehouse);
             await _unitOfWork.SaveChangesAsync();
 
             var mappedWarehouse = _mapper.Map<ResultWarehouseDto>(warehouse);

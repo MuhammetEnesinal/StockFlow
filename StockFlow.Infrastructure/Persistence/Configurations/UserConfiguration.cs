@@ -13,8 +13,18 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<User> builder)
         {
-            builder.HasIndex(x=>x.Email).IsUnique();
-            builder.HasIndex(x=>x.EmployeeCode).IsUnique();
+            builder.HasIndex(x => x.Email)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            builder.HasIndex(x => x.EmployeeCode)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            builder.HasOne(x => x.Warehouse)
+                .WithMany(x => x.Users)
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -15,14 +15,14 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Services
 {
-    public class CustomerService(IGenericRepository<Customer> _repository,IMapper _mapper,IUnitOfWork _unitOfWork,IValidator<CreateCustomerDto> _createValidator,IValidator<UpdateCustomerDto>_updateValidator) : ICustomerService
+    public class CustomerService(IGenericRepository<Customer> _repository, IMapper _mapper, IUnitOfWork _unitOfWork, IValidator<CreateCustomerDto> _createValidator, IValidator<UpdateCustomerDto> _updateValidator) : ICustomerService
     {
         public async Task<BaseResult<ResultCustomerDto>> CreateAsync(CreateCustomerDto createCustomerDto)
         {
             createCustomerDto.FullName = createCustomerDto.FullName.Trim();
             createCustomerDto.Email = string.IsNullOrWhiteSpace(createCustomerDto.Email) ? null : createCustomerDto.Email.Trim();
             createCustomerDto.PhoneNumber = string.IsNullOrWhiteSpace(createCustomerDto.PhoneNumber) ? null : createCustomerDto.PhoneNumber.Trim();
-          
+
             var validationResult = await _createValidator.ValidateAsync(createCustomerDto);
             if (!validationResult.IsValid)
             {
@@ -38,16 +38,23 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
-            var customer = await _repository.Query()
-                .Include(c => c.Orders)
-                .FirstOrDefaultAsync(c => c.Id == id);
+            var check = await _repository.Query()
+                .Where(c => c.Id == id)
+                .Select(c => new
+                {
+                    Customer = c,
+                    HasOrders = c.Orders.Any()
+                })
+                .FirstOrDefaultAsync();
 
-            if (customer == null)
+            if (check == null)
             {
                 return BaseResult<bool>.Fail("Müşteri bulunamadı", ResultErrorType.NotFound);
             }
-            
-            if (customer.Orders.Any())
+
+            var customer = check.Customer;
+
+            if (check.HasOrders)
             {
                 return BaseResult<bool>.Fail("Müşteri silinemez, çünkü bu müşteri ile ilişkili siparişler bulunmaktadır.", ResultErrorType.Conflict);
             }
@@ -67,13 +74,13 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<ResultCustomerDto>> GetByIdAsync(int id)
         {
-           var customer =await _repository.GetByIdAsync(id);
-           if(customer == null)
+            var customer = await _repository.GetByIdAsync(id);
+            if (customer == null)
             {
                 return BaseResult<ResultCustomerDto>.Fail("Müşteri bulunamadı", ResultErrorType.NotFound);
             }
-           var mappedCustomer = _mapper.Map<ResultCustomerDto>(customer);
-           return BaseResult<ResultCustomerDto>.Success(mappedCustomer);
+            var mappedCustomer = _mapper.Map<ResultCustomerDto>(customer);
+            return BaseResult<ResultCustomerDto>.Success(mappedCustomer);
         }
 
         public async Task<BaseResult<ResultCustomerDto>> UpdateAsync(int id, UpdateCustomerDto updateCustomerDto)
@@ -88,14 +95,14 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultCustomerDto>.Fail(validationResult.Errors);
             }
 
-            var customer = await _repository.GetByIdAsync(id);
+            var customer = await _repository.QueryForUpdate()
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (customer == null)
             {
                 return BaseResult<ResultCustomerDto>.Fail("Müşteri bulunamadı", ResultErrorType.NotFound);
             }
 
             _mapper.Map(updateCustomerDto, customer);
-            _repository.Update(customer);
             await _unitOfWork.SaveChangesAsync();
             var mappedCustomer = _mapper.Map<ResultCustomerDto>(customer);
             return BaseResult<ResultCustomerDto>.Success(mappedCustomer);

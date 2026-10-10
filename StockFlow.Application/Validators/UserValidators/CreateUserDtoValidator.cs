@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Validators.UserValidators
 {
-    public class CreateUserDtoValidator:AbstractValidator<CreateUserDto>
+    public class CreateUserDtoValidator : AbstractValidator<CreateUserDto>
     {
 
         public CreateUserDtoValidator()
@@ -30,7 +30,7 @@ namespace StockFlow.Application.Validators.UserValidators
 
             RuleFor(x => x.EmployeeCode)
                 .NotEmpty().WithMessage("Kullanıcı kodu boş bırakılamaz.");
-               
+
 
             RuleFor(x => x.WarehouseId)
                 .GreaterThan(0).WithMessage("Depo ID 0'dan büyük olmalıdır.")
@@ -44,6 +44,10 @@ namespace StockFlow.Application.Validators.UserValidators
                 .Matches(@"[A-Z]").WithMessage("Şifre en az bir büyük harf içermelidir.")
                 .Matches(@"[a-z]").WithMessage("Şifre en az bir küçük harf içermelidir.")
                 .Matches(@"[0-9]").WithMessage("Şifre en az bir rakam içermelidir.");
+
+            RuleFor(x => x.Role)
+                .NotNull().WithMessage("Kullanıcı rolü boş bırakılamaz.")
+                .IsInEnum().WithMessage("Geçersiz kullanıcı rolü.");
         }
     }
 }

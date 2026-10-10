@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Validators.UserValidators
 {
-    public class UpdateDtoValidator:AbstractValidator<UpdateUserDto>
+    public class UpdateDtoValidator : AbstractValidator<UpdateUserDto>
     {
         public UpdateDtoValidator()
         {
@@ -20,7 +20,7 @@ namespace StockFlow.Application.Validators.UserValidators
                 .NotEmpty().WithMessage("Email adresi boş bırakılamaz.")
                 .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.")
                 .MaximumLength(200).WithMessage("Email adresi 200 karakterden uzun olamaz.");
-                
+
 
             RuleFor(x => x.PhoneNumber)
                 .Length(11).WithMessage("Telefon numarası 11 haneli olmak zorundadır.")
@@ -29,14 +29,18 @@ namespace StockFlow.Application.Validators.UserValidators
 
             RuleFor(x => x.EmployeeCode)
                 .NotEmpty().WithMessage("Kullanıcı kodu boş bırakılamaz.");
-            
+
 
             RuleFor(x => x.WarehouseId)
                  .GreaterThan(0).WithMessage("Depo ID 0'dan büyük olmalıdır.")
                  .When(x => x.WarehouseId.HasValue);
 
             RuleFor(x => x.IsActive)
-                 .NotEmpty().WithMessage("Kullanıcı aktifliği boş bırakılamaz.");
+                 .NotNull().WithMessage("Kullanıcının aktiflik durumu boş bırakılamaz.");
+
+            RuleFor(x => x.Role)
+                .NotNull().WithMessage("Kullanıcı rolü boş bırakılamaz.")
+                .IsInEnum().WithMessage("Geçersiz kullanıcı rolü.");
         }
     }
 }

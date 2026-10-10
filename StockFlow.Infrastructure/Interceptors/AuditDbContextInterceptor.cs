@@ -7,12 +7,21 @@ using StockFlow.Domain.Entities;
 using StockFlow.Domain.Enums;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace StockFlow.Infrastructure.Interceptors
 {
     public class AuditDbContextInterceptor(ICurrentUserService _currentUserService) : SaveChangesInterceptor
     {
-        private readonly List<(EntityEntry<BaseEntity> Entry, AuditAction Action, string Changes)> _pendingEntries = new();
+        private static readonly HashSet<string> _sensitiveProperties = new() { "PasswordHash", "RefreshToken" };
+
+        private static readonly JsonSerializerOptions _changesJsonOptions = new()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        private readonly List<(EntityEntry<BaseEntity> Entry, AuditAction Action, string? Changes)> _pendingEntries = new();
 
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
@@ -41,7 +50,7 @@ namespace StockFlow.Infrastructure.Interceptors
                     case EntityState.Added:
                         entry.Entity.CreateAtTime = DateTime.UtcNow;
                         entry.Entity.IsDeleted = false;
-                        _pendingEntries.Add((entry, AuditAction.Create, BuildChanges(entry, AuditAction.Create)));
+                        _pendingEntries.Add((entry, AuditAction.Create, null));
                         break;
 
                     case EntityState.Modified:
@@ -91,8 +100,12 @@ namespace StockFlow.Infrastructure.Interceptors
 
                 foreach (var (entry, action, changes) in _pendingEntries)
                 {
-                    var auditLog = CreateAuditLog(entry, action, changes);
-                    if (auditLog != null)   
+                    var finalChanges = action == AuditAction.Create
+                        ? BuildChanges(entry, AuditAction.Create)
+                        : changes!;
+
+                    var auditLog = CreateAuditLog(entry, action, finalChanges);
+                    if (auditLog != null)
                     {
                         auditLogs.Add(auditLog);
                     }
@@ -117,15 +130,16 @@ namespace StockFlow.Infrastructure.Interceptors
                 {
                     if (property.IsModified)
                     {
+                        var propertyName = property.Metadata.Name;
                         var oldValue = property.OriginalValue;
                         var newValue = property.CurrentValue;
 
                         if (!Equals(oldValue, newValue))
                         {
-                            changes[property.Metadata.Name] = new
+                            changes[propertyName] = new
                             {
-                                Old = oldValue,
-                                New = newValue
+                                Old = MaskIfSensitive(propertyName, oldValue),
+                                New = MaskIfSensitive(propertyName, newValue)
                             };
                         }
                     }
@@ -142,14 +156,26 @@ namespace StockFlow.Infrastructure.Interceptors
                         continue;
                     }
 
-                    changes[property.Metadata.Name] = property.CurrentValue;
+                    if (property.Metadata.IsConcurrencyToken)
+                    {
+                        continue;
+                    }
+
+                    changes[propertyName] = MaskIfSensitive(propertyName, property.CurrentValue);
                 }
             }
 
-            return JsonSerializer.Serialize(changes, new JsonSerializerOptions
+            return JsonSerializer.Serialize(changes, _changesJsonOptions);
+        }
+
+        private static object? MaskIfSensitive(string propertyName, object? value)
+        {
+            if (value == null || !_sensitiveProperties.Contains(propertyName))
             {
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            });
+                return value;
+            }
+
+            return "***";
         }
 
         private AuditLog? CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action, string changes)

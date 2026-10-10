@@ -16,6 +16,5 @@ namespace StockFlow.Application.Interfaces.Services
 
         Task<BaseResult<ResultUserDto>> UpdateAsync(int id, UpdateUserDto updateUserDto);
         Task<BaseResult<bool>> DeleteAsync(int id);
-        Task<BaseResult<bool>> ChangePasswordAsync(int id, ChangePasswordDto changePasswordDto);
     }
 }

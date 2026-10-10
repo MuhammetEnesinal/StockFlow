@@ -49,7 +49,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultStockDto>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
             }
 
-            var stock = await _stockRepository.Query()
+            var stock = await _stockRepository.QueryForUpdate()
                 .FirstOrDefaultAsync(s => s.ProductId == stockInDto.ProductId && s.WarehouseId == stockInDto.WarehouseId);
 
             if (stock == null)
@@ -65,7 +65,6 @@ namespace StockFlow.Application.Services
             else
             {
                 stock.Quantity += stockInDto.Quantity;
-                _stockRepository.Update(stock);
             }
 
             var movement = new StockMovement
@@ -113,7 +112,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultStockDto>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
             }
 
-            var stock = await _stockRepository.Query()
+            var stock = await _stockRepository.QueryForUpdate()
                 .FirstOrDefaultAsync(s => s.ProductId == stockOutDto.ProductId && s.WarehouseId == stockOutDto.WarehouseId);
 
             if (stock == null)
@@ -131,7 +130,6 @@ namespace StockFlow.Application.Services
             }
 
             stock.Quantity -= stockOutDto.Quantity;
-            _stockRepository.Update(stock);
 
             var movement = new StockMovement
             {
@@ -224,7 +222,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultTransferDto>.Fail("Hedef depo bulunamadı", ResultErrorType.NotFound);
             }
 
-            var sourceStock = await _stockRepository.Query()
+            var sourceStock = await _stockRepository.QueryForUpdate()
                 .FirstOrDefaultAsync(s => s.ProductId == dto.ProductId && s.WarehouseId == dto.SourceWarehouseId);
 
             if (sourceStock == null)
@@ -242,9 +240,8 @@ namespace StockFlow.Application.Services
             }
 
             sourceStock.Quantity -= dto.Quantity;
-            _stockRepository.Update(sourceStock);
 
-            var targetStock = await _stockRepository.Query()
+            var targetStock = await _stockRepository.QueryForUpdate()
                 .FirstOrDefaultAsync(s => s.ProductId == dto.ProductId && s.WarehouseId == dto.TargetWarehouseId);
 
             if (targetStock == null)
@@ -260,7 +257,6 @@ namespace StockFlow.Application.Services
             else
             {
                 targetStock.Quantity += dto.Quantity;
-                _stockRepository.Update(targetStock);
             }
 
             var transferGroupId = Guid.NewGuid();
@@ -315,6 +311,9 @@ namespace StockFlow.Application.Services
             }
 
             var reservedPerSource = new Dictionary<(int ProductId, int WarehouseId), int>();
+            var stockCache = new Dictionary<(int ProductId, int WarehouseId), Stock>();
+            var productCache = new Dictionary<int, Product>();
+            var warehouseCache = new Dictionary<int, Warehouse>();
 
             foreach (var transfer in transferBatchDto.Transfers)
             {
@@ -326,35 +325,56 @@ namespace StockFlow.Application.Services
                     return BaseResult<IEnumerable<ResultTransferDto>>.Fail(transferValidationResult.Errors);
                 }
 
-                var product = await _productRepository.GetByIdAsync(transfer.ProductId);
-                if (product == null)
+                if (!productCache.TryGetValue(transfer.ProductId, out var product))
                 {
-                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Ürün bulunamadı", ResultErrorType.NotFound);
+                    product = await _productRepository.GetByIdAsync(transfer.ProductId);
+                    if (product == null)
+                    {
+                        return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Ürün bulunamadı", ResultErrorType.NotFound);
+                    }
+
+                    productCache[transfer.ProductId] = product;
                 }
 
-                var warehouse = await _warehouseRepository.GetByIdAsync(transfer.SourceWarehouseId);
-                if (warehouse == null)
+                if (!warehouseCache.TryGetValue(transfer.SourceWarehouseId, out var warehouse))
                 {
-                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Kaynak depo bulunamadı", ResultErrorType.NotFound);
+                    warehouse = await _warehouseRepository.GetByIdAsync(transfer.SourceWarehouseId);
+                    if (warehouse == null)
+                    {
+                        return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Kaynak depo bulunamadı", ResultErrorType.NotFound);
+                    }
+
+                    warehouseCache[transfer.SourceWarehouseId] = warehouse;
                 }
 
-                var targetWarehouse = await _warehouseRepository.GetByIdAsync(transfer.TargetWarehouseId);
-                if (targetWarehouse == null)
+                if (!warehouseCache.ContainsKey(transfer.TargetWarehouseId))
                 {
-                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Hedef depo bulunamadı", ResultErrorType.NotFound);
-                }
+                    var targetWarehouse = await _warehouseRepository.GetByIdAsync(transfer.TargetWarehouseId);
+                    if (targetWarehouse == null)
+                    {
+                        return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Hedef depo bulunamadı", ResultErrorType.NotFound);
+                    }
 
-                var sourceStock = await _stockRepository.Query()
-                    .FirstOrDefaultAsync(s => s.ProductId == transfer.ProductId && s.WarehouseId == transfer.SourceWarehouseId);
-
-                if (sourceStock == null)
-                {
-                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail(
-                        $"Ürün: {product.Name}, Kaynak Depo: {warehouse.Name} için stok bulunamadı",
-                        ResultErrorType.NotFound);
+                    warehouseCache[transfer.TargetWarehouseId] = targetWarehouse;
                 }
 
                 var key = (transfer.ProductId, transfer.SourceWarehouseId);
+
+                if (!stockCache.TryGetValue(key, out var sourceStock))
+                {
+                    sourceStock = await _stockRepository.QueryForUpdate()
+                        .FirstOrDefaultAsync(s => s.ProductId == transfer.ProductId && s.WarehouseId == transfer.SourceWarehouseId);
+
+                    if (sourceStock == null)
+                    {
+                        return BaseResult<IEnumerable<ResultTransferDto>>.Fail(
+                            $"Ürün: {product.Name}, Kaynak Depo: {warehouse.Name} için stok bulunamadı",
+                            ResultErrorType.NotFound);
+                    }
+
+                    stockCache[key] = sourceStock;
+                }
+
                 var alreadyReserved = reservedPerSource.TryGetValue(key, out var reserved) ? reserved : 0;
 
                 if ((sourceStock.Quantity - alreadyReserved) < transfer.Quantity)
@@ -368,29 +388,21 @@ namespace StockFlow.Application.Services
             }
 
             var resultList = new List<ResultTransferDto>();
-            var stockCache = new Dictionary<(int ProductId, int WarehouseId), Stock>();
-            var newStockKeys = new HashSet<(int ProductId, int WarehouseId)>();   
 
             foreach (var transfer in transferBatchDto.Transfers)
             {
-                var product = await _productRepository.GetByIdAsync(transfer.ProductId);
-                var sourceWarehouse = await _warehouseRepository.GetByIdAsync(transfer.SourceWarehouseId);
-                var targetWarehouse = await _warehouseRepository.GetByIdAsync(transfer.TargetWarehouseId);
+                var product = productCache[transfer.ProductId];
+                var sourceWarehouse = warehouseCache[transfer.SourceWarehouseId];
+                var targetWarehouse = warehouseCache[transfer.TargetWarehouseId];
 
                 var sourceKey = (transfer.ProductId, transfer.SourceWarehouseId);
-                if (!stockCache.TryGetValue(sourceKey, out var sourceStock))
-                {
-                    sourceStock = await _stockRepository.Query()
-                        .FirstOrDefaultAsync(s => s.ProductId == transfer.ProductId && s.WarehouseId == transfer.SourceWarehouseId);
-                    stockCache[sourceKey] = sourceStock;                         
-                }
+                var sourceStock = stockCache[sourceKey];
                 sourceStock.Quantity -= transfer.Quantity;
-                _stockRepository.Update(sourceStock);                            
 
                 var targetKey = (transfer.ProductId, transfer.TargetWarehouseId);
                 if (!stockCache.TryGetValue(targetKey, out var targetStock))
                 {
-                    targetStock = await _stockRepository.Query()
+                    targetStock = await _stockRepository.QueryForUpdate()
                         .FirstOrDefaultAsync(s => s.ProductId == transfer.ProductId && s.WarehouseId == transfer.TargetWarehouseId);
 
                     if (targetStock == null)
@@ -402,15 +414,11 @@ namespace StockFlow.Application.Services
                             Quantity = 0
                         };
                         await _stockRepository.AddAsync(targetStock);
-                        newStockKeys.Add(targetKey);                             
                     }
-                    stockCache[targetKey] = targetStock;                       
+
+                    stockCache[targetKey] = targetStock;
                 }
                 targetStock.Quantity += transfer.Quantity;
-                if (!newStockKeys.Contains(targetKey))
-                {
-                    _stockRepository.Update(targetStock);                        
-                }
 
                 var transferGroupId = Guid.NewGuid();
 

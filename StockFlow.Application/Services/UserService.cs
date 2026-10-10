@@ -22,43 +22,9 @@ namespace StockFlow.Application.Services
         IUnitOfWork _unitOfWork,
         IMapper _mapper,
         IValidator<CreateUserDto> _createValidator,
-        IValidator<UpdateUserDto> _updateValidator, IValidator<ChangePasswordDto> _changePasswordValidator
+        IValidator<UpdateUserDto> _updateValidator
         ) : IUserService
     {
-        public async Task<BaseResult<bool>> ChangePasswordAsync(int id, ChangePasswordDto changePasswordDto)
-        {
-            changePasswordDto.CurrentPassword = changePasswordDto.CurrentPassword.Trim();
-            changePasswordDto.NewPassword = changePasswordDto.NewPassword.Trim();
-
-            var user = await _userGenericRepository.GetByIdAsync(id);
-            if (user == null)
-            {
-                return BaseResult<bool>.Fail("Kullanıcı bulunamadı.", ResultErrorType.NotFound);
-            }
-
-
-            var validateResult = await _changePasswordValidator.ValidateAsync(changePasswordDto);
-            if (!validateResult.IsValid)
-            {
-
-                return BaseResult<bool>.Fail(validateResult.Errors);
-            }
-
-            var isCorrect = BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, user.PasswordHash);
-            if (!isCorrect)
-            {
-                return BaseResult<bool>.Fail("Mevcut şifre yanlış.", ResultErrorType.Unauthorized);
-            }
-
-            var newPassword = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
-            user.PasswordHash = newPassword;
-
-            _userGenericRepository.Update(user);
-            await _unitOfWork.SaveChangesAsync();
-
-            return BaseResult<bool>.Success(true);
-        }
-
         public async Task<BaseResult<ResultUserDto>> CreateAsync(CreateUserDto createUserDto)
         {
             createUserDto.Email = createUserDto.Email.Trim();
@@ -114,7 +80,7 @@ namespace StockFlow.Application.Services
                 FullName = createUserDto.FullName,
                 EmployeeCode = createUserDto.EmployeeCode,
                 PhoneNumber = createUserDto.PhoneNumber,
-                Role = createUserDto.Role,
+                Role = createUserDto.Role!.Value,
                 WarehouseId = createUserDto.WarehouseId,
                 IsActive = true
             };
@@ -140,28 +106,35 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
-            var user = await _userGenericRepository.Query()
-                .Include(u => u.StockMovements)
-                .Include(u => u.Orders)
-                .Include(u => u.PurchaseOrders)
-                .FirstOrDefaultAsync(u => u.Id == id);
+            var check = await _userGenericRepository.Query()
+                .Where(u => u.Id == id)
+                .Select(u => new
+                {
+                    User = u,
+                    HasStockMovements = u.StockMovements.Any(),
+                    HasOrders = u.Orders.Any(),
+                    HasPurchaseOrders = u.PurchaseOrders.Any()
+                })
+                .FirstOrDefaultAsync();
 
-            if (user == null)
+            if (check == null)
             {
                 return BaseResult<bool>.Fail($"Kullanıcı bulunamadı. UserId: {id}.", ResultErrorType.NotFound);
             }
 
-            if (user.StockMovements.Any())
+            var user = check.User;
+
+            if (check.HasStockMovements)
             {
                 return BaseResult<bool>.Fail("Bu kullanıcının geçmiş stok hareketleri var, silinemez.", ResultErrorType.Conflict);
             }
 
-            if (user.Orders.Any())
+            if (check.HasOrders)
             {
                 return BaseResult<bool>.Fail("Bu kullanıcının oluşturduğu siparişler var, silinemez.", ResultErrorType.Conflict);
             }
 
-            if (user.PurchaseOrders.Any())
+            if (check.HasPurchaseOrders)
             {
                 return BaseResult<bool>.Fail("Bu kullanıcının oluşturduğu satın alma siparişleri var, silinemez.", ResultErrorType.Conflict);
             }
@@ -205,19 +178,20 @@ namespace StockFlow.Application.Services
             updateUserDto.EmployeeCode = updateUserDto.EmployeeCode.Trim();
             updateUserDto.PhoneNumber = string.IsNullOrWhiteSpace(updateUserDto.PhoneNumber) ? null : updateUserDto.PhoneNumber.Trim();
 
-            var user = await _userGenericRepository.GetByIdAsync(id);
+            var validateResult = await _updateValidator.ValidateAsync(updateUserDto);
+            if (!validateResult.IsValid)
+            {
+                return BaseResult<ResultUserDto>.Fail(validateResult.Errors);
+            }
+
+            var user = await _userGenericRepository.QueryForUpdate()
+                .FirstOrDefaultAsync(x => x.Id == id);
 
             if (user == null)
             {
                 return BaseResult<ResultUserDto>.Fail(
                     $"Güncellenecek kullanıcı bulunamadı. UserId: {id}.",
                     ResultErrorType.NotFound);
-            }
-
-            var validateResult = await _updateValidator.ValidateAsync(updateUserDto);
-            if (!validateResult.IsValid)
-            {
-                return BaseResult<ResultUserDto>.Fail(validateResult.Errors);
             }
 
             var existingUser = await _userGenericRepository.Query()
@@ -253,15 +227,24 @@ namespace StockFlow.Application.Services
                 }
             }
 
+            var newRole = updateUserDto.Role!.Value;
+            var newIsActive = updateUserDto.IsActive!.Value;
+            var revokeRefreshToken = !newIsActive || user.Role != newRole;
+
             user.Email = updateUserDto.Email;
             user.FullName = updateUserDto.FullName;
             user.EmployeeCode = updateUserDto.EmployeeCode;
             user.PhoneNumber = updateUserDto.PhoneNumber;
-            user.Role = updateUserDto.Role;
+            user.Role = newRole;
             user.WarehouseId = updateUserDto.WarehouseId;
-            user.IsActive = updateUserDto.IsActive;
+            user.IsActive = newIsActive;
 
-            _userGenericRepository.Update(user);
+            if (revokeRefreshToken)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiresAt = null;
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             var userDto = new ResultUserDto

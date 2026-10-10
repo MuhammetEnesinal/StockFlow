@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Infrastructure.Repositories
 {
-    public class GenericRepository<T> (AppDbContext _context): IGenericRepository<T> where T : BaseEntity
+    public class GenericRepository<T>(AppDbContext _context) : IGenericRepository<T> where T : BaseEntity
     {
         public async Task AddAsync(T entity)
         {
@@ -30,20 +30,19 @@ namespace StockFlow.Infrastructure.Repositories
             Func<IQueryable<T>, IQueryable<T>>? include = null,
             Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null)
         {
-            // Sayfa numarası ve boyutu sınırı tek yerde (eskiden controller'lardaydı):
-            // pageNumber en az 1, pageSize 1 ile 100 arası (0 veya negatifse varsayılan 10)
+
             pageNumber = Math.Max(pageNumber, 1);
             pageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
 
             IQueryable<T> query = _context.Set<T>().AsNoTracking();
 
-            // Servislerdeki eski .Where(...) satırının karşılığı
+
             if (filter != null)
             {
                 query = query.Where(filter);
             }
 
-            // Servislerdeki eski .Include(...).ThenInclude(...) zincirinin karşılığı
+
             if (include != null)
             {
                 query = include(query);
@@ -51,9 +50,6 @@ namespace StockFlow.Infrastructure.Repositories
 
             var totalCount = await query.CountAsync();
 
-            // Sıralama (EF Core Pagination dokümanı): sıralama tamamen benzersiz olmalı,
-            // yoksa sayfalar arasında kayıt atlanabilir. Verilen sıralamanın sonuna Id eklenir,
-            // hiç sıralama verilmediyse Id'ye göre sıralanır.
             var orderedQuery = orderBy != null
                 ? orderBy(query).ThenBy(e => e.Id)
                 : query.OrderBy(e => e.Id);
@@ -82,14 +78,9 @@ namespace StockFlow.Infrastructure.Repositories
             return _context.Set<T>().AsNoTracking();
         }
 
-        public void Update(T entity)
+        public IQueryable<T> QueryForUpdate()
         {
-            var trackedEntity = _context.Set<T>().Find(entity.Id);
-
-            if (trackedEntity != null)
-            {
-                _context.Entry(trackedEntity).CurrentValues.SetValues(entity);
-            }
+            return _context.Set<T>();
         }
     }
 }

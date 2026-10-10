@@ -21,7 +21,7 @@ services:
     volumes:
       - sqlserver-data:/var/opt/mssql
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SQL_SA_PASSWORD}", "-C", "-b", "-Q", "IF EXISTS (SELECT 1 FROM sys.databases WHERE state <> 0) THROW 50000, 'Veritabaninda Hata Olustu.', 1;"]
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SQL_SA_PASSWORD}", "-C", "-b", "-Q", "IF DB_ID('StockFlowDb') IS NOT NULL EXEC('SELECT TOP (1) 1 FROM [StockFlowDb].sys.tables');"]
       interval: 10s
       timeout: 5s
       retries: 10

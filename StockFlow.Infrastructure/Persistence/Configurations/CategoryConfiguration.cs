@@ -8,7 +8,9 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<Category> builder)
         {
-            builder.HasIndex(x => x.Name).IsUnique();
+            builder.HasIndex(x => x.Name)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
         }
     }
 }

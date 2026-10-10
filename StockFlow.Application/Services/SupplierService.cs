@@ -35,25 +35,39 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
-            var supplier = await _genericRepository.Query()
-                .Include(s => s.Products)
-                .FirstOrDefaultAsync(s => s.Id == id);
+            var check = await _genericRepository.Query()
+                .Where(s => s.Id == id)
+                .Select(s => new
+                {
+                    Supplier = s,
+                    HasProducts = s.Products.Any(),
+                    HasPurchaseOrders = s.PurchaseOrders.Any()
+                })
+                .FirstOrDefaultAsync();
 
-            if (supplier == null)
+            if (check == null)
             {
                 return BaseResult<bool>.Fail("Tedarikçi bulunamadı.", ResultErrorType.NotFound);
             }
 
-            if (supplier.Products.Any())
+            var supplier = check.Supplier;
+
+            if (check.HasProducts)
             {
                 return BaseResult<bool>.Fail("Tedarikçiye bağlı ürünler var tedarikçiyi silemezsiniz.", ResultErrorType.Conflict);
             }
+
+            if (check.HasPurchaseOrders)
+            {
+                return BaseResult<bool>.Fail("Tedarikçiye ait satın alma siparişleri var, tedarikçi silinemez.", ResultErrorType.Conflict);
+            }
+
             _genericRepository.Delete(supplier);
             await _unitOfWork.SaveChangesAsync();
             return BaseResult<bool>.Success(true);
         }
 
-        public async Task<BaseResult<PagedResult<ResultSupplierDto>>> GetAllAsync(int pageNumber,int pageSize)
+        public async Task<BaseResult<PagedResult<ResultSupplierDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
             var paged = await _genericRepository.GetAllAsync(pageNumber, pageSize);
             var result = _mapper.Map<PagedResult<ResultSupplierDto>>(paged);
@@ -84,14 +98,14 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultSupplierDto>.Fail(validationResult.Errors);
             }
 
-            var supplier = await _genericRepository.GetByIdAsync(id);
+            var supplier = await _genericRepository.QueryForUpdate()
+                .FirstOrDefaultAsync(s => s.Id == id);
             if (supplier == null)
             {
                 return BaseResult<ResultSupplierDto>.Fail("Tedarikçi bulunamadı.", ResultErrorType.NotFound);
             }
 
             _mapper.Map(dto, supplier);
-            _genericRepository.Update(supplier);
             await _unitOfWork.SaveChangesAsync();
 
             var resultDto = _mapper.Map<ResultSupplierDto>(supplier);

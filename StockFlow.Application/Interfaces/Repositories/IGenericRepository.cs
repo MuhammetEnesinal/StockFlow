@@ -22,9 +22,9 @@ namespace StockFlow.Application.Interfaces.Repositories
 
         IQueryable<T> Query();
 
-        Task AddAsync(T entity);
+        IQueryable<T> QueryForUpdate();
 
-        void Update(T entity);
+        Task AddAsync(T entity);
 
         void Delete(T entity);
     }

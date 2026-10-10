@@ -11,7 +11,7 @@ namespace StockFlow.API.Controllers
     public class UsersController(IUserService _userService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber=1, [FromQuery] int pageSize=10)
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var users = await _userService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(users);
@@ -42,14 +42,6 @@ namespace StockFlow.API.Controllers
         public async Task<IActionResult> DeleteAsync(int id)
         {
             var result = await _userService.DeleteAsync(id);
-            return HandleResult(result);
-        }
-
-        [Authorize]
-        [HttpPut("change-password/{id}")]
-        public async Task<IActionResult> ChangePasswordAsync(int id, ChangePasswordDto changePasswordDto)
-        {
-            var result = await _userService.ChangePasswordAsync(id, changePasswordDto);
             return HandleResult(result);
         }
     }

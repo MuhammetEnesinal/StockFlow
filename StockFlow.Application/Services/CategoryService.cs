@@ -32,15 +32,21 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
-            var category = await _repository.Query()
-                .Include(c => c.Products)
-                .FirstOrDefaultAsync(c => c.Id == id);
+            var check = await _repository.Query()
+                .Where(c => c.Id == id)
+                .Select(c => new
+                {
+                    Category = c,
+                    HasProducts = c.Products.Any()
+                })
+                .FirstOrDefaultAsync();
 
-            if (category == null)
+            if (check == null)
             {
                 return BaseResult<bool>.Fail("Kategori Bulunamadı.", ResultErrorType.NotFound);
             }
-            if (category.Products.Any())
+            var category = check.Category;
+            if (check.HasProducts)
             {
                 return BaseResult<bool>.Fail("Bu kategoriye ait ürünler var,önce ürünleri silin.", ResultErrorType.Conflict);
             }
@@ -77,13 +83,13 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<ResultCategoryDto>.Fail(validationResult.Errors);
             }
-            var category = await _repository.GetByIdAsync(id);
+            var category = await _repository.QueryForUpdate()
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (category == null)
             {
                 return BaseResult<ResultCategoryDto>.Fail("Kategori Bulunamadı.", ResultErrorType.NotFound);
             }
             _mapper.Map(dto, category);
-            _repository.Update(category);
             await _unitOfWork.SaveChangesAsync();
 
             var resultDto = _mapper.Map<ResultCategoryDto>(category);

@@ -66,31 +66,38 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<bool>> DeleteAsync(int id)
         {
-            var product = await _genericRepository.Query()
-                .Include(p => p.Stocks)
-                .Include(p => p.StockMovements)
-                .Include(p => p.OrderItems)
-                .Include(p => p.PurchaseOrderItems)
-                .FirstOrDefaultAsync(p => p.Id == id);
+            var check = await _genericRepository.Query()
+                .Where(p => p.Id == id)
+                .Select(p => new
+                {
+                    Product = p,
+                    HasStocks = p.Stocks.Any(),
+                    HasStockMovements = p.StockMovements.Any(),
+                    HasOrderItems = p.OrderItems.Any(),
+                    HasPurchaseOrderItems = p.PurchaseOrderItems.Any()
+                })
+                .FirstOrDefaultAsync();
 
-            if (product == null)
+            if (check == null)
             {
                 return BaseResult<bool>.Fail("Ürün bulunamadı.", ResultErrorType.NotFound);
             }
 
-            if (product.Stocks.Any())
+            var product = check.Product;
+
+            if (check.HasStocks)
             {
                 return BaseResult<bool>.Fail("Ürüne ait stok kaydı var silinemez.", ResultErrorType.Conflict);
             }
-            if (product.StockMovements.Any())
+            if (check.HasStockMovements)
             {
                 return BaseResult<bool>.Fail("Ürüne ait stok hareketi var silinemez.", ResultErrorType.Conflict);
             }
-            if (product.OrderItems.Any())
+            if (check.HasOrderItems)
             {
                 return BaseResult<bool>.Fail("Ürüne sipariş kayıdı var silinemez.", ResultErrorType.Conflict);
             }
-            if (product.PurchaseOrderItems.Any())
+            if (check.HasPurchaseOrderItems)
             {
                 return BaseResult<bool>.Fail("Ürüne ait satın alma kayıdı var silinemez.", ResultErrorType.Conflict);
             }
@@ -135,7 +142,8 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultProductDto>.Fail(valditeResult.Errors);
             }
 
-            var product = await _genericRepository.GetByIdAsync(id);
+            var product = await _genericRepository.QueryForUpdate()
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (product == null)
             {
                 return BaseResult<ResultProductDto>.Fail("Ürün bulunamadı.", ResultErrorType.NotFound);
@@ -160,7 +168,6 @@ namespace StockFlow.Application.Services
             }
 
             _mapper.Map(dto, product);
-            _genericRepository.Update(product);
             await _unitOfWork.SaveChangesAsync();
 
             var mappedResult = _mapper.Map<ResultProductDto>(product);

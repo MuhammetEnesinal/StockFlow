@@ -8,6 +8,8 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<Stock> builder)
         {
+            builder.ToTable(t => t.HasCheckConstraint("CK_Stocks_Quantity_NonNegative", "[Quantity] >= 0"));
+
             builder.HasIndex(x => new { x.ProductId, x.WarehouseId }).IsUnique();
             builder.Property(x => x.RowVersion).IsRowVersion();
 

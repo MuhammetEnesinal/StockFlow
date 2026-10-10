@@ -8,6 +8,10 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<StockMovement> builder)
         {
+            builder.ToTable(t => t.HasCheckConstraint(
+                "CK_StockMovements_OrderOrPurchaseOrder",
+                "[OrderId] IS NULL OR [PurchaseOrderId] IS NULL"));
+
             builder.HasOne(x => x.PerformedByUser)
                 .WithMany(x => x.StockMovements)
                 .HasForeignKey(x => x.PerformedByUserId)

@@ -11,9 +11,9 @@ namespace StockFlow.API.Controllers
     public class PurchaseOrdersController(IPurchaseOrderService _purchaseOrderService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _purchaseOrderService.GetAllAsync(pageNumber,pageSize);
+            var result = await _purchaseOrderService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(result);
         }
 
@@ -33,7 +33,7 @@ namespace StockFlow.API.Controllers
         }
 
         [Authorize(Roles = "Admin,WarehouseManager")]
-        [HttpPut("{id}/send")]
+        [HttpPost("{id}/send")]
         public async Task<IActionResult> SendAsync(int id)
         {
             var result = await _purchaseOrderService.SendAsync(id);
@@ -41,7 +41,7 @@ namespace StockFlow.API.Controllers
         }
 
         [Authorize(Roles = "Admin,WarehouseManager")]
-        [HttpPut("{id}/receive")]
+        [HttpPost("{id}/receive")]
         public async Task<IActionResult> ReceiveAsync(int id, ReceiveDto receiveDto)
         {
             var result = await _purchaseOrderService.ReceiveAsync(id, receiveDto);
@@ -49,7 +49,7 @@ namespace StockFlow.API.Controllers
         }
 
         [Authorize(Roles = "Admin,WarehouseManager")]
-        [HttpPut("{id}/cancel")]
+        [HttpPost("{id}/cancel")]
         public async Task<IActionResult> CancelAsync(int id)
         {
             var result = await _purchaseOrderService.CancelAsync(id);

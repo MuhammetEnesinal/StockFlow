@@ -15,7 +15,7 @@ namespace StockFlow.Application.DTOs.UsersDtos
         public required string FullName { get; set; }
         public required string EmployeeCode { get; set; }
         public string? PhoneNumber { get; set; }
-        public UserRole Role { get; set; }
+        public UserRole? Role { get; set; }
         public int? WarehouseId { get; set; }
     }
 }

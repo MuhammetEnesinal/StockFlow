@@ -21,7 +21,6 @@ namespace StockFlow.Application.Services
         IUnitOfWork _unitOfWork,
         IGenericRepository<Supplier> _supplierRepository,
         IGenericRepository<PurchaseOrderItem> _purchaseOrderItemRepository,
-        IGenericRepository<User> _userRepository,
         IGenericRepository<Stock> _stockRepository,
         IGenericRepository<StockMovement> _stockMovementRepository,
         IGenericRepository<Product> _productRepository,
@@ -35,7 +34,8 @@ namespace StockFlow.Application.Services
     {
         public async Task<BaseResult<bool>> CancelAsync(int id)
         {
-            var purchaseOrder = await _purchaseOrderRepository.GetByIdAsync(id);
+            var purchaseOrder = await _purchaseOrderRepository.QueryForUpdate()
+                .FirstOrDefaultAsync(po => po.Id == id);
             if (purchaseOrder == null)
             {
                 return BaseResult<bool>.Fail("Satın alma siparişi bulunamadı", ResultErrorType.NotFound);
@@ -50,7 +50,6 @@ namespace StockFlow.Application.Services
 
             purchaseOrder.Status = PurchaseOrderStatus.Cancelled;
 
-            _purchaseOrderRepository.Update(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
             return BaseResult<bool>.Success(true);
         }
@@ -62,6 +61,8 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<ResultPurchaseOrderDto>.Fail(validateResult.Errors);
             }
+
+            var userId = _currentUserService.GetUserId();
 
             var supplier = await _supplierRepository.GetByIdAsync(createPurchaseOrderDto.SupplierId);
             if (supplier == null)
@@ -75,6 +76,8 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultPurchaseOrderDto>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
             }
 
+            var productCache = new Dictionary<int, Product>();
+
             foreach (var item in createPurchaseOrderDto.Items)
             {
                 var itemsvalidateResult = await _purchaseOrderItemRequestValidator.ValidateAsync(item);
@@ -83,10 +86,15 @@ namespace StockFlow.Application.Services
                     return BaseResult<ResultPurchaseOrderDto>.Fail(itemsvalidateResult.Errors);
                 }
 
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product == null)
+                if (!productCache.ContainsKey(item.ProductId))
                 {
-                    return BaseResult<ResultPurchaseOrderDto>.Fail("Ürün bulunamadı, lütfen önce bu ürünü sisteme ekleyiniz", ResultErrorType.NotFound);
+                    var product = await _productRepository.GetByIdAsync(item.ProductId);
+                    if (product == null)
+                    {
+                        return BaseResult<ResultPurchaseOrderDto>.Fail("Ürün bulunamadı, lütfen önce bu ürünü sisteme ekleyiniz", ResultErrorType.NotFound);
+                    }
+
+                    productCache[item.ProductId] = product;
                 }
             }
 
@@ -97,7 +105,7 @@ namespace StockFlow.Application.Services
                 Status = PurchaseOrderStatus.Draft,
                 SupplierId = createPurchaseOrderDto.SupplierId,
                 WarehouseId = createPurchaseOrderDto.WarehouseId,
-                CreatedByUserId = _currentUserService.GetUserId(),
+                CreatedByUserId = userId,
                 SentAt = null,
                 ReceivedAt = null
             };
@@ -106,7 +114,7 @@ namespace StockFlow.Application.Services
 
             foreach (var item in createPurchaseOrderDto.Items)
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                var product = productCache[item.ProductId];
 
                 var purchaseOrderItem = new PurchaseOrderItem
                 {
@@ -123,12 +131,6 @@ namespace StockFlow.Application.Services
 
             await _purchaseOrderRepository.AddAsync(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
-
-            var currentUser = await _userRepository.GetByIdAsync(_currentUserService.GetUserId());
-            if (currentUser == null)
-            {
-                return BaseResult<ResultPurchaseOrderDto>.Fail("Oturum açan kullanıcı bulunamadı, lütfen tekrar giriş yapın.", ResultErrorType.Unauthorized);
-            }
 
             var resultItems = createdItems.Select(x => new ResultPurchaseOrderItemDto
             {
@@ -149,9 +151,9 @@ namespace StockFlow.Application.Services
                 SupplierName = supplier.Name,
                 WarehouseId = warehouse.Id,
                 WarehouseName = warehouse.Name,
-                CreatedByUserId = currentUser.Id,
-                CreatedByUserFullName = currentUser.FullName,
-                CreatedByUserEmployeeCode = currentUser.EmployeeCode,
+                CreatedByUserId = userId,
+                CreatedByUserFullName = _currentUserService.GetUserName(),
+                CreatedByUserEmployeeCode = _currentUserService.GetEmployeeCode(),
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
                 Items = resultItems
@@ -222,7 +224,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultPurchaseOrderDto>.Fail(validateResult.Errors);
             }
 
-            var purchaseOrder = await _purchaseOrderRepository.Query()
+            var purchaseOrder = await _purchaseOrderRepository.QueryForUpdate()
                 .Include(po => po.Supplier)
                 .Include(po => po.Warehouse)
                 .Include(po => po.Items)
@@ -254,6 +256,8 @@ namespace StockFlow.Application.Services
                     ResultErrorType.BusinessRule);
             }
 
+            var receivedItems = new Dictionary<int, PurchaseOrderItem>();
+
             foreach (var receiveItem in receiveDto.Items)
             {
                 var validResult = await _receiveItemValidator.ValidateAsync(receiveItem);
@@ -276,32 +280,38 @@ namespace StockFlow.Application.Services
                         $"Sipariş edilenden fazla teslim alınamaz. Ürün: {purchaseOrderItem.Product.Name}, Sipariş edilen: {purchaseOrderItem.OrderedQuantity}, Şu ana kadar gelen: {purchaseOrderItem.ReceivedQuantity}, Bu teslimatta istenen: {receiveItem.ReceivedQuantity}",
                         ResultErrorType.BusinessRule);
                 }
+
+                receivedItems[receiveItem.PurchaseOrderItemId] = purchaseOrderItem;
             }
+
+            var userId = _currentUserService.GetUserId();
+            var stockCache = new Dictionary<int, Stock>();
 
             foreach (var receiveItem in receiveDto.Items)
             {
-                var purchaseOrderItem = purchaseOrder.Items.FirstOrDefault(x => x.Id == receiveItem.PurchaseOrderItemId);
+                var purchaseOrderItem = receivedItems[receiveItem.PurchaseOrderItemId];
                 purchaseOrderItem.ReceivedQuantity += receiveItem.ReceivedQuantity;
-                _purchaseOrderItemRepository.Update(purchaseOrderItem);   // <-- YENİ: kalem izlenmiyor, ayrıca kaydedilmeli
 
-                var stock = await _stockRepository.Query()
-                    .FirstOrDefaultAsync(s => s.ProductId == purchaseOrderItem.ProductId && s.WarehouseId == purchaseOrder.WarehouseId);
-
-                if (stock == null)
+                if (!stockCache.TryGetValue(purchaseOrderItem.ProductId, out var stock))
                 {
-                    stock = new Stock
+                    stock = await _stockRepository.QueryForUpdate()
+                        .FirstOrDefaultAsync(s => s.ProductId == purchaseOrderItem.ProductId && s.WarehouseId == purchaseOrder.WarehouseId);
+
+                    if (stock == null)
                     {
-                        ProductId = purchaseOrderItem.ProductId,
-                        WarehouseId = purchaseOrder.WarehouseId,
-                        Quantity = receiveItem.ReceivedQuantity
-                    };
-                    await _stockRepository.AddAsync(stock);
+                        stock = new Stock
+                        {
+                            ProductId = purchaseOrderItem.ProductId,
+                            WarehouseId = purchaseOrder.WarehouseId,
+                            Quantity = 0
+                        };
+                        await _stockRepository.AddAsync(stock);
+                    }
+
+                    stockCache[purchaseOrderItem.ProductId] = stock;
                 }
-                else
-                {
-                    stock.Quantity += receiveItem.ReceivedQuantity;
-                    _stockRepository.Update(stock);
-                }
+
+                stock.Quantity += receiveItem.ReceivedQuantity;
 
                 var movement = new StockMovement
                 {
@@ -311,7 +321,7 @@ namespace StockFlow.Application.Services
                     Quantity = receiveItem.ReceivedQuantity,
                     Note = $"Satın alma teslimatı - {purchaseOrder.PurchaseOrderNumber}",
                     PurchaseOrderId = purchaseOrder.Id,
-                    PerformedByUserId = _currentUserService.GetUserId()
+                    PerformedByUserId = userId
                 };
                 await _stockMovementRepository.AddAsync(movement);
             }
@@ -327,7 +337,6 @@ namespace StockFlow.Application.Services
                 purchaseOrder.Status = PurchaseOrderStatus.PartiallyReceived;
             }
 
-            _purchaseOrderRepository.Update(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
 
             var resultDto = _mapper.Map<ResultPurchaseOrderDto>(purchaseOrder);
@@ -336,7 +345,7 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<ResultPurchaseOrderDto>> SendAsync(int id)
         {
-            var purchaseOrder = await _purchaseOrderRepository.Query()
+            var purchaseOrder = await _purchaseOrderRepository.QueryForUpdate()
                                  .Include(po => po.Supplier)
                                  .Include(po => po.Warehouse)
                                  .Include(po => po.Items)
@@ -356,7 +365,6 @@ namespace StockFlow.Application.Services
 
             purchaseOrder.Status = PurchaseOrderStatus.Sent;
             purchaseOrder.SentAt = DateTime.UtcNow;
-            _purchaseOrderRepository.Update(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
 
             var resultDto = _mapper.Map<ResultPurchaseOrderDto>(purchaseOrder);

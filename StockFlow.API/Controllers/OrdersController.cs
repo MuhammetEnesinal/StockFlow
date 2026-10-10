@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.OrderDtos;
 using StockFlow.Application.Interfaces.Services;
-using StockFlow.Domain.Enums;
 
 namespace StockFlow.API.Controllers
 {
@@ -12,7 +11,7 @@ namespace StockFlow.API.Controllers
     public class OrdersController(IOrderService _orderService) : BaseController
     {
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=10)
+        public async Task<IActionResult> GetAllAsync([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var orders = await _orderService.GetAllAsync(pageNumber, pageSize);
             return HandleResult(orders);
@@ -34,15 +33,39 @@ namespace StockFlow.API.Controllers
         }
 
         [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
-        [HttpPut("{id}/status")]
-        public async Task<IActionResult> UpdateStatusAsync(int id, [FromBody] OrderStatus newStatus)
+        [HttpPost("{id}/confirm")]
+        public async Task<IActionResult> ConfirmAsync(int id)
         {
-            var result = await _orderService.UpdateStatusAsync(id, newStatus);
+            var result = await _orderService.ConfirmAsync(id);
             return HandleResult(result);
         }
 
         [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
-        [HttpPut("{id}/cancel")]
+        [HttpPost("{id}/prepare")]
+        public async Task<IActionResult> PrepareAsync(int id)
+        {
+            var result = await _orderService.PrepareAsync(id);
+            return HandleResult(result);
+        }
+
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
+        [HttpPost("{id}/ship")]
+        public async Task<IActionResult> ShipAsync(int id)
+        {
+            var result = await _orderService.ShipAsync(id);
+            return HandleResult(result);
+        }
+
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
+        [HttpPost("{id}/deliver")]
+        public async Task<IActionResult> DeliverAsync(int id)
+        {
+            var result = await _orderService.DeliverAsync(id);
+            return HandleResult(result);
+        }
+
+        [Authorize(Roles = "Admin,WarehouseManager,WarehouseEmployee")]
+        [HttpPost("{id}/cancel")]
         public async Task<IActionResult> CancelAsync(int id)
         {
             var result = await _orderService.CancelAsync(id);

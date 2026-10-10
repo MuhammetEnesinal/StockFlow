@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StockFlow.Application.DTOs.AuthDtos;
+using StockFlow.Application.DTOs.UsersDtos;
 using StockFlow.Application.Interfaces.Services;
 
 namespace StockFlow.API.Controllers
@@ -28,7 +29,15 @@ namespace StockFlow.API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> LogoutAsync()
         {
-            var result= await _authService.LogoutAsync();
+            var result = await _authService.LogoutAsync();
+            return HandleResult(result);
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePasswordAsync(ChangePasswordDto changePasswordDto)
+        {
+            var result = await _authService.ChangePasswordAsync(changePasswordDto);
             return HandleResult(result);
         }
     }
