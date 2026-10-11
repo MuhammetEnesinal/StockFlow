@@ -44,7 +44,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("EntityName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -67,6 +68,9 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("PerformedByUserId");
 
+                    b.HasIndex("EntityName", "Id")
+                        .HasFilter("[IsDeleted] = 0");
+
                     b.ToTable("AuditLogs");
                 });
 
@@ -86,7 +90,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("UpdateAtTime")
                         .HasColumnType("datetime2");
@@ -112,17 +117,20 @@ namespace StockFlow.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
 
                     b.Property<DateTime?>("UpdateAtTime")
                         .HasColumnType("datetime2");
@@ -159,6 +167,12 @@ namespace StockFlow.Infrastructure.Migrations
                     b.Property<string>("OrderNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -248,7 +262,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
@@ -256,7 +271,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("SKU")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("SupplierId")
                         .HasColumnType("int");
@@ -300,6 +316,12 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ReceivedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<DateTime?>("SentAt")
                         .HasColumnType("datetime2");
@@ -432,7 +454,8 @@ namespace StockFlow.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int?>("OrderId")
                         .HasColumnType("int");
@@ -467,11 +490,15 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("PerformedByUserId");
 
-                    b.HasIndex("ProductId");
-
                     b.HasIndex("PurchaseOrderId");
 
-                    b.HasIndex("WarehouseId");
+                    b.HasIndex("WarehouseId", "CreateAtTime")
+                        .IsDescending(false, true)
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("ProductId", "WarehouseId", "CreateAtTime")
+                        .IsDescending(false, false, true)
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("StockMovements", t =>
                         {
@@ -491,17 +518,20 @@ namespace StockFlow.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
 
                     b.Property<DateTime?>("UpdateAtTime")
                         .HasColumnType("datetime2");
@@ -528,15 +558,18 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("EmployeeCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -549,7 +582,8 @@ namespace StockFlow.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("nvarchar(max)");
@@ -590,7 +624,8 @@ namespace StockFlow.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Address")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("CreateAtTime")
                         .HasColumnType("datetime2");
@@ -600,7 +635,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("UpdateAtTime")
                         .HasColumnType("datetime2");
@@ -725,7 +761,7 @@ namespace StockFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("StockFlow.Domain.Entities.PurchaseOrder", "PurchaseOrder")
-                        .WithMany("Items")
+                        .WithMany("PurchaseOrderItems")
                         .HasForeignKey("PurchaseOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -835,7 +871,7 @@ namespace StockFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("StockFlow.Domain.Entities.PurchaseOrder", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("PurchaseOrderItems");
 
                     b.Navigation("StockMovements");
                 });

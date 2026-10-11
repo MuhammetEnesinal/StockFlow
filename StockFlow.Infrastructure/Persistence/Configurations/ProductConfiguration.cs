@@ -8,6 +8,9 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<Product> builder)
         {
+            builder.Property(x => x.Name).HasMaxLength(200);
+            builder.Property(x => x.SKU).HasMaxLength(50);
+
             builder.HasIndex(x => x.SKU)
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");

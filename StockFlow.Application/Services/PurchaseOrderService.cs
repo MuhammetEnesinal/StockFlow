@@ -78,7 +78,7 @@ namespace StockFlow.Application.Services
 
             var productCache = new Dictionary<int, Product>();
 
-            foreach (var item in createPurchaseOrderDto.Items)
+            foreach (var item in createPurchaseOrderDto.PurchaseOrderItems)
             {
                 var itemsvalidateResult = await _purchaseOrderItemRequestValidator.ValidateAsync(item);
                 if (!itemsvalidateResult.IsValid)
@@ -112,7 +112,7 @@ namespace StockFlow.Application.Services
 
             var createdItems = new List<(PurchaseOrderItem Item, Product Product)>();
 
-            foreach (var item in createPurchaseOrderDto.Items)
+            foreach (var item in createPurchaseOrderDto.PurchaseOrderItems)
             {
                 var product = productCache[item.ProductId];
 
@@ -156,7 +156,7 @@ namespace StockFlow.Application.Services
                 CreatedByUserEmployeeCode = _currentUserService.GetEmployeeCode(),
                 SentAt = purchaseOrder.SentAt,
                 ReceivedAt = purchaseOrder.ReceivedAt,
-                Items = resultItems
+                PurchaseOrderItems = resultItems
             };
 
             return BaseResult<ResultPurchaseOrderDto>.Success(resultDto);
@@ -169,7 +169,7 @@ namespace StockFlow.Application.Services
                     .Include(po => po.Supplier)
                     .Include(po => po.Warehouse)
                     .Include(po => po.CreatedByUser)
-                    .Include(po => po.Items)
+                    .Include(po => po.PurchaseOrderItems)
                         .ThenInclude(poi => poi.Product));
             var result = _mapper.Map<PagedResult<ResultPurchaseOrderDto>>(paged);
 
@@ -181,7 +181,7 @@ namespace StockFlow.Application.Services
             var purchaseOrder = await _purchaseOrderRepository.Query()
                                 .Include(po => po.Supplier)
                                 .Include(po => po.Warehouse)
-                                .Include(po => po.Items)
+                                .Include(po => po.PurchaseOrderItems)
                                      .ThenInclude(poi => poi.Product)
                                 .Include(po => po.CreatedByUser)
                                 .FirstOrDefaultAsync(po => po.Id == id);
@@ -209,7 +209,7 @@ namespace StockFlow.Application.Services
                     .Include(po => po.Supplier)
                     .Include(po => po.Warehouse)
                     .Include(po => po.CreatedByUser)
-                    .Include(po => po.Items)
+                    .Include(po => po.PurchaseOrderItems)
                         .ThenInclude(poi => poi.Product));
             var result = _mapper.Map<PagedResult<ResultPurchaseOrderDto>>(paged);
 
@@ -227,7 +227,7 @@ namespace StockFlow.Application.Services
             var purchaseOrder = await _purchaseOrderRepository.QueryForUpdate()
                 .Include(po => po.Supplier)
                 .Include(po => po.Warehouse)
-                .Include(po => po.Items)
+                .Include(po => po.PurchaseOrderItems)
                     .ThenInclude(poi => poi.Product)
                 .Include(po => po.CreatedByUser)
                 .FirstOrDefaultAsync(po => po.Id == id);
@@ -266,7 +266,7 @@ namespace StockFlow.Application.Services
                     return BaseResult<ResultPurchaseOrderDto>.Fail(validResult.Errors);
                 }
 
-                var purchaseOrderItem = purchaseOrder.Items.FirstOrDefault(x => x.Id == receiveItem.PurchaseOrderItemId);
+                var purchaseOrderItem = purchaseOrder.PurchaseOrderItems.FirstOrDefault(x => x.Id == receiveItem.PurchaseOrderItemId);
                 if (purchaseOrderItem == null)
                 {
                     return BaseResult<ResultPurchaseOrderDto>.Fail(
@@ -326,7 +326,7 @@ namespace StockFlow.Application.Services
                 await _stockMovementRepository.AddAsync(movement);
             }
 
-            bool allComplete = purchaseOrder.Items.All(i => i.ReceivedQuantity >= i.OrderedQuantity);
+            bool allComplete = purchaseOrder.PurchaseOrderItems.All(i => i.ReceivedQuantity >= i.OrderedQuantity);
             if (allComplete)
             {
                 purchaseOrder.Status = PurchaseOrderStatus.Received;
@@ -336,6 +336,8 @@ namespace StockFlow.Application.Services
             {
                 purchaseOrder.Status = PurchaseOrderStatus.PartiallyReceived;
             }
+
+            purchaseOrder.UpdateAtTime = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
 
@@ -348,7 +350,7 @@ namespace StockFlow.Application.Services
             var purchaseOrder = await _purchaseOrderRepository.QueryForUpdate()
                                  .Include(po => po.Supplier)
                                  .Include(po => po.Warehouse)
-                                 .Include(po => po.Items)
+                                 .Include(po => po.PurchaseOrderItems)
                                       .ThenInclude(poi => poi.Product)
                                  .Include(po => po.CreatedByUser)
                                  .FirstOrDefaultAsync(po => po.Id == id);

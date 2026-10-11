@@ -9,6 +9,7 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
         public void Configure(EntityTypeBuilder<PurchaseOrder> builder)
         {
             builder.HasIndex(x => x.PurchaseOrderNumber).IsUnique();
+            builder.Property(x => x.RowVersion).IsRowVersion();
 
             builder.HasOne(x => x.CreatedByUser)
                 .WithMany(x => x.PurchaseOrders)

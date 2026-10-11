@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Validators.UserValidators
 {
-    public class UpdateDtoValidator : AbstractValidator<UpdateUserDto>
+    public class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
     {
-        public UpdateDtoValidator()
+        public UpdateUserDtoValidator()
         {
             RuleFor(x => x.FullName)
              .NotEmpty().WithMessage("Kullanıcı adı ve soyadı boş olamaz.")
@@ -28,7 +28,8 @@ namespace StockFlow.Application.Validators.UserValidators
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
 
             RuleFor(x => x.EmployeeCode)
-                .NotEmpty().WithMessage("Kullanıcı kodu boş bırakılamaz.");
+                .NotEmpty().WithMessage("Kullanıcı kodu boş bırakılamaz.")
+                .MaximumLength(20).WithMessage("Kullanıcı kodu 20 karakterden uzun olamaz.");
 
 
             RuleFor(x => x.WarehouseId)

@@ -11,7 +11,7 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
             builder.Property(x => x.UnitPrice).HasPrecision(18, 2);
 
             builder.HasOne(x => x.PurchaseOrder)
-                .WithMany(x => x.Items)
+                .WithMany(x => x.PurchaseOrderItems)
                 .HasForeignKey(x => x.PurchaseOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 

@@ -20,7 +20,7 @@ namespace StockFlow.Application.DTOs.PurchaseOrderDtos
         public required string CreatedByUserEmployeeCode { get; set; }
         public DateTime? SentAt { get; set; }
         public DateTime? ReceivedAt { get; set; }
-        public required List<ResultPurchaseOrderItemDto> Items { get; set; }
+        public required List<ResultPurchaseOrderItemDto> PurchaseOrderItems { get; set; }
 
     }
 }

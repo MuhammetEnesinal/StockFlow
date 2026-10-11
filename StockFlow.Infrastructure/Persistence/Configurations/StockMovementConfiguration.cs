@@ -8,6 +8,16 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<StockMovement> builder)
         {
+            builder.Property(x => x.Note).HasMaxLength(500);
+
+            builder.HasIndex(x => new { x.WarehouseId, x.CreateAtTime })
+                .IsDescending(false, true)
+                .HasFilter("[IsDeleted] = 0");
+
+            builder.HasIndex(x => new { x.ProductId, x.WarehouseId, x.CreateAtTime })
+                .IsDescending(false, false, true)
+                .HasFilter("[IsDeleted] = 0");
+
             builder.ToTable(t => t.HasCheckConstraint(
                 "CK_StockMovements_OrderOrPurchaseOrder",
                 "[OrderId] IS NULL OR [PurchaseOrderId] IS NULL"));

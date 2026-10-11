@@ -13,6 +13,11 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<User> builder)
         {
+            builder.Property(x => x.Email).HasMaxLength(200);
+            builder.Property(x => x.FullName).HasMaxLength(200);
+            builder.Property(x => x.EmployeeCode).HasMaxLength(20);
+            builder.Property(x => x.PhoneNumber).HasMaxLength(11);
+
             builder.HasIndex(x => x.Email)
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");

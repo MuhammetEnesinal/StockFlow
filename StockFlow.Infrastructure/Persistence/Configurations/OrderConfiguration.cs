@@ -10,6 +10,7 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
         {
             builder.HasIndex(x => x.OrderNumber).IsUnique();
             builder.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            builder.Property(x => x.RowVersion).IsRowVersion();
 
             builder.HasOne(x => x.CreatedByUser)
                 .WithMany(x => x.Orders)

@@ -25,7 +25,9 @@ namespace StockFlow.Domain.Entities
         public DateTime? SentAt { get; set; }
         public DateTime? ReceivedAt { get; set; }
 
-        public ICollection<PurchaseOrderItem> Items { get; set; } = new List<PurchaseOrderItem>();
+        public ICollection<PurchaseOrderItem> PurchaseOrderItems { get; set; } = new List<PurchaseOrderItem>();
         public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+
+        public byte[] RowVersion { get; set; } = null!;
     }
 }

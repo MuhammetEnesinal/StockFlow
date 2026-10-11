@@ -29,7 +29,8 @@ namespace StockFlow.Application.Validators.UserValidators
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
 
             RuleFor(x => x.EmployeeCode)
-                .NotEmpty().WithMessage("Kullanıcı kodu boş bırakılamaz.");
+                .NotEmpty().WithMessage("Kullanıcı kodu boş bırakılamaz.")
+                .MaximumLength(20).WithMessage("Kullanıcı kodu 20 karakterden uzun olamaz.");
 
 
             RuleFor(x => x.WarehouseId)
