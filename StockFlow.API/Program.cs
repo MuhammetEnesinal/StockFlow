@@ -43,7 +43,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 
-builder.Services.AddControllers()          
+builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -54,10 +54,10 @@ var secretKey = jwtSettings["SecretKey"];
 
 builder.Services.AddAuthentication(options => {
 
-    options.DefaultAuthenticateScheme= JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme=JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 
-} ).AddJwtBearer(options => {
+}).AddJwtBearer(options => {
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -69,16 +69,19 @@ builder.Services.AddAuthentication(options => {
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
     };
 
-} );
+});
 
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<AuditDbContextInterceptor>();
+builder.Services.AddScoped<SoftDeleteInterceptor>();
 
 builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlConnection"));
-    options.AddInterceptors(serviceProvider.GetRequiredService<AuditDbContextInterceptor>());
+    options.AddInterceptors(
+        serviceProvider.GetRequiredService<AuditDbContextInterceptor>(),
+        serviceProvider.GetRequiredService<SoftDeleteInterceptor>());
 });
 
 
@@ -94,15 +97,15 @@ builder.Services.AddRateLimiter(options =>
         return RateLimitPartition.GetSlidingWindowLimiter(userId, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 10,
-            Window=TimeSpan.FromMinutes(1),
-            SegmentsPerWindow=6,
-            QueueProcessingOrder=QueueProcessingOrder.OldestFirst,
-            QueueLimit=0
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
 
 
         });
 
-        
+
 
 
     });
@@ -129,11 +132,11 @@ builder.Services.AddScoped<IStockService, StockService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
-builder.Services.AddScoped<IUserService,UserService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ITokenService,TokenService> ();
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService,CurrentUserService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 builder.Services.AddMapster();
@@ -144,7 +147,6 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 app.UseExceptionHandler();
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -164,14 +166,21 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    context.Database.Migrate(); 
+    context.Database.Migrate();
 
     if (!context.Users.Any())
     {
+        var seedAdminPassword = app.Configuration["SeedAdmin:Password"];
+
+        if (string.IsNullOrWhiteSpace(seedAdminPassword))
+        {
+            throw new InvalidOperationException("İlk yönetici hesabı oluşturulamadı: Users tablosu boş ancak SeedAdmin:Password ayarı tanımlı değil. .env dosyasına SEED_ADMIN_PASSWORD değerini ekleyip uygulamayı yeniden başlatın.");
+        }
+
         context.Users.Add(new User
         {
             Email = "admin@stockflow.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedAdminPassword),
             FullName = "Test Admin",
             EmployeeCode = "EMP-0001",
             Role = UserRole.Admin,

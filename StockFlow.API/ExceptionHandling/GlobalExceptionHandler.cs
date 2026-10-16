@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.Application.Common;
 using System.Text.Json;
@@ -37,6 +38,30 @@ namespace StockFlow.API.ExceptionHandling
                     statusCode = StatusCodes.Status409Conflict;
                     break;
 
+                case DbUpdateException when exception.InnerException is SqlException { Number: 2601 or 2627 }:
+                    _logger.LogWarning(
+                        exception,
+                        "Benzersizlik ihlali yakalandı.");
+
+                    result = BaseResult<object>.Fail(
+                        "Bu kayıt zaten mevcut.",
+                        ResultErrorType.Conflict);
+
+                    statusCode = StatusCodes.Status409Conflict;
+                    break;
+
+                case DbUpdateException when exception.InnerException is SqlException { Number: 547 }:
+                    _logger.LogWarning(
+                        exception,
+                        "FOREIGN KEY veya CHECK kısıtı ihlali yakalandı.");
+
+                    result = BaseResult<object>.Fail(
+                        "Bu kayıt başka kayıtlarla ilişkili olduğu veya bir kuralı ihlal ettiği için işlem yapılamadı.",
+                        ResultErrorType.Conflict);
+
+                    statusCode = StatusCodes.Status409Conflict;
+                    break;
+
                 case DbUpdateException:
                     _logger.LogError(
                         exception,
@@ -47,6 +72,18 @@ namespace StockFlow.API.ExceptionHandling
                         ResultErrorType.Conflict);
 
                     statusCode = StatusCodes.Status409Conflict;
+                    break;
+
+                case UnauthorizedAccessException:
+                    _logger.LogWarning(
+                        exception,
+                        "Kimlik bilgisi bulunamadı.");
+
+                    result = BaseResult<object>.Fail(
+                        "Kimlik doğrulaması gerekli.",
+                        ResultErrorType.Unauthorized);
+
+                    statusCode = StatusCodes.Status401Unauthorized;
                     break;
 
                 default:

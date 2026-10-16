@@ -13,7 +13,7 @@ namespace StockFlow.Infrastructure.Interceptors
 {
     public class AuditDbContextInterceptor(ICurrentUserService _currentUserService) : SaveChangesInterceptor
     {
-        private static readonly HashSet<string> _sensitiveProperties = new() { "PasswordHash", "RefreshToken" };
+        private static readonly HashSet<string> _ignoredProperties = new() { "PasswordHash", "RefreshToken", "RefreshTokenExpiresAt", "UpdateAtTime" };
 
         private static readonly JsonSerializerOptions _changesJsonOptions = new()
         {
@@ -48,39 +48,20 @@ namespace StockFlow.Infrastructure.Interceptors
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        entry.Entity.CreateAtTime = DateTime.UtcNow;
-                        entry.Entity.IsDeleted = false;
                         _pendingEntries.Add((entry, AuditAction.Create, null));
                         break;
 
                     case EntityState.Modified:
-                        entry.Entity.UpdateAtTime = DateTime.UtcNow;
-                        entry.Property(x => x.CreateAtTime).IsModified = false;
+                        var updateChanges = BuildChanges(entry, AuditAction.Update);
 
-                        if (entry.Entity is User)
+                        if (updateChanges != null)
                         {
-                            var modifiedProperties = entry.Properties
-                                .Where(p => p.IsModified)
-                                .Select(p => p.Metadata.Name)
-                                .ToList();
-
-                            var onlyRefreshTokenChanged = modifiedProperties.All(p =>
-                                p == "RefreshToken" || p == "RefreshTokenExpiresAt" || p == "UpdateAtTime");
-
-                            if (onlyRefreshTokenChanged)
-                            {
-                                break;
-                            }
+                            _pendingEntries.Add((entry, AuditAction.Update, updateChanges));
                         }
 
-                        _pendingEntries.Add((entry, AuditAction.Update, BuildChanges(entry, AuditAction.Update)));
                         break;
 
                     case EntityState.Deleted:
-                        entry.State = EntityState.Modified;
-                        entry.Entity.IsDeleted = true;
-                        entry.Entity.UpdateAtTime = DateTime.UtcNow;
-                        entry.Property(x => x.CreateAtTime).IsModified = false;
                         _pendingEntries.Add((entry, AuditAction.Delete, BuildChanges(entry, AuditAction.Delete)));
                         break;
                 }
@@ -96,19 +77,31 @@ namespace StockFlow.Infrastructure.Interceptors
         {
             if (eventData.Context != null && _pendingEntries.Any())
             {
+                int userId;
+                string userName;
+                string employeeCode;
+
+                try
+                {
+                    userId = _currentUserService.GetUserId();
+                    userName = _currentUserService.GetUserName();
+                    employeeCode = _currentUserService.GetEmployeeCode();
+                }
+                catch
+                {
+                    _pendingEntries.Clear();
+                    return await base.SavedChangesAsync(eventData, result, cancellationToken);
+                }
+
                 var auditLogs = new List<AuditLog>();
 
                 foreach (var (entry, action, changes) in _pendingEntries)
                 {
                     var finalChanges = action == AuditAction.Create
                         ? BuildChanges(entry, AuditAction.Create)
-                        : changes!;
+                        : changes;
 
-                    var auditLog = CreateAuditLog(entry, action, finalChanges);
-                    if (auditLog != null)
-                    {
-                        auditLogs.Add(auditLog);
-                    }
+                    auditLogs.Add(CreateAuditLog(entry, action, finalChanges, userId, userName, employeeCode));
                 }
 
                 _pendingEntries.Clear();
@@ -120,7 +113,7 @@ namespace StockFlow.Infrastructure.Interceptors
             return await base.SavedChangesAsync(eventData, result, cancellationToken);
         }
 
-        private string BuildChanges(EntityEntry<BaseEntity> entry, AuditAction action)
+        private string? BuildChanges(EntityEntry<BaseEntity> entry, AuditAction action)
         {
             var changes = new Dictionary<string, object?>();
 
@@ -128,9 +121,15 @@ namespace StockFlow.Infrastructure.Interceptors
             {
                 foreach (var property in entry.Properties)
                 {
+                    var propertyName = property.Metadata.Name;
+
+                    if (_ignoredProperties.Contains(propertyName))
+                    {
+                        continue;
+                    }
+
                     if (property.IsModified)
                     {
-                        var propertyName = property.Metadata.Name;
                         var oldValue = property.OriginalValue;
                         var newValue = property.CurrentValue;
 
@@ -138,11 +137,16 @@ namespace StockFlow.Infrastructure.Interceptors
                         {
                             changes[propertyName] = new
                             {
-                                Old = MaskIfSensitive(propertyName, oldValue),
-                                New = MaskIfSensitive(propertyName, newValue)
+                                Old = oldValue,
+                                New = newValue
                             };
                         }
                     }
+                }
+
+                if (changes.Count == 0)
+                {
+                    return null;
                 }
             }
             else
@@ -151,7 +155,12 @@ namespace StockFlow.Infrastructure.Interceptors
                 {
                     var propertyName = property.Metadata.Name;
 
-                    if (propertyName == "Id" || propertyName == "CreateAtTime" || propertyName == "IsDeleted" || propertyName == "UpdateAtTime")
+                    if (_ignoredProperties.Contains(propertyName))
+                    {
+                        continue;
+                    }
+
+                    if (propertyName == "Id" || propertyName == "CreateAtTime" || propertyName == "IsDeleted")
                     {
                         continue;
                     }
@@ -161,40 +170,15 @@ namespace StockFlow.Infrastructure.Interceptors
                         continue;
                     }
 
-                    changes[propertyName] = MaskIfSensitive(propertyName, property.CurrentValue);
+                    changes[propertyName] = property.CurrentValue;
                 }
             }
 
             return JsonSerializer.Serialize(changes, _changesJsonOptions);
         }
 
-        private static object? MaskIfSensitive(string propertyName, object? value)
+        private AuditLog CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action, string? changes, int userId, string userName, string employeeCode)
         {
-            if (value == null || !_sensitiveProperties.Contains(propertyName))
-            {
-                return value;
-            }
-
-            return "***";
-        }
-
-        private AuditLog? CreateAuditLog(EntityEntry<BaseEntity> entry, AuditAction action, string changes)
-        {
-            int userId;
-            string userName;
-            string employeeCode;
-
-            try
-            {
-                userId = _currentUserService.GetUserId();
-                userName = _currentUserService.GetUserName();
-                employeeCode = _currentUserService.GetEmployeeCode();
-            }
-            catch
-            {
-                return null;
-            }
-
             return new AuditLog
             {
                 EntityName = entry.Entity.GetType().Name,

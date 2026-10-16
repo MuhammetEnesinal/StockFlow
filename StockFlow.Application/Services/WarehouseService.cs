@@ -78,15 +78,7 @@ namespace StockFlow.Application.Services
         public async Task<BaseResult<PagedResult<ResultWarehouseDto>>> GetAllAsync(int pageNumber, int pageSize)
         {
             var paged = await _genericRepository.GetAllAsync(pageNumber, pageSize);
-            var mappedItems = _mapper.Map<List<ResultWarehouseDto>>(paged.Items);
-
-            var result = new PagedResult<ResultWarehouseDto>
-            {
-                Items = mappedItems,
-                PageNumber = paged.PageNumber,
-                PageSize = paged.PageSize,
-                TotalCount = paged.TotalCount
-            };
+            var result = _mapper.Map<PagedResult<ResultWarehouseDto>>(paged);
 
             return BaseResult<PagedResult<ResultWarehouseDto>>.Success(result);
         }

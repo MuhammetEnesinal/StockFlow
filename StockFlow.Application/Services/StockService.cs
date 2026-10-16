@@ -37,6 +37,8 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultStockDto>.Fail(validationResult.Errors);
             }
 
+            var userId = _currentUserService.GetUserId();
+
             var product = await _productRepository.GetByIdAsync(stockInDto.ProductId);
             if (product == null)
             {
@@ -74,7 +76,7 @@ namespace StockFlow.Application.Services
                 Type = StockMovementType.Adjustment,
                 Quantity = stockInDto.Quantity,
                 Note = stockInDto.Note,
-                PerformedByUserId = _currentUserService.GetUserId()
+                PerformedByUserId = userId
             };
             await _stockMovementRepository.AddAsync(movement);
 
@@ -99,6 +101,8 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<ResultStockDto>.Fail(validationResult.Errors);
             }
+
+            var userId = _currentUserService.GetUserId();
 
             var product = await _productRepository.GetByIdAsync(stockOutDto.ProductId);
             if (product == null)
@@ -138,7 +142,7 @@ namespace StockFlow.Application.Services
                 Type = StockMovementType.Adjustment,
                 Quantity = -stockOutDto.Quantity,
                 Note = stockOutDto.Note,
-                PerformedByUserId = _currentUserService.GetUserId()
+                PerformedByUserId = userId
             };
             await _stockMovementRepository.AddAsync(movement);
 
@@ -156,8 +160,8 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultStockDto>>> GetStockByWarehouseAsync(int warehouseId, int pageNumber, int pageSize)
         {
-            var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
-            if (warehouse == null)
+            var warehouseExists = await _warehouseRepository.Query().AnyAsync(w => w.Id == warehouseId);
+            if (!warehouseExists)
             {
                 return BaseResult<PagedResult<ResultStockDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
             }
@@ -174,12 +178,12 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultStockMovementDto>>> GetMovementsAsync(int productId, int warehouseId, int pageNumber, int pageSize)
         {
-            var product = await _productRepository.GetByIdAsync(productId);
-            if (product == null)
+            var productExists = await _productRepository.Query().AnyAsync(p => p.Id == productId);
+            if (!productExists)
                 return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Ürün bulunamadı", ResultErrorType.NotFound);
 
-            var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
-            if (warehouse == null)
+            var warehouseExists = await _warehouseRepository.Query().AnyAsync(w => w.Id == warehouseId);
+            if (!warehouseExists)
                 return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
 
             var paged = await _stockMovementRepository.GetAllAsync(pageNumber, pageSize,
@@ -203,6 +207,8 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<ResultTransferDto>.Fail(validationResult.Errors);
             }
+
+            var userId = _currentUserService.GetUserId();
 
             var product = await _productRepository.GetByIdAsync(dto.ProductId);
             if (product == null)
@@ -269,7 +275,7 @@ namespace StockFlow.Application.Services
                 Quantity = -dto.Quantity,
                 Note = dto.Note,
                 TransferGroupId = transferGroupId,
-                PerformedByUserId = _currentUserService.GetUserId()
+                PerformedByUserId = userId
             };
             await _stockMovementRepository.AddAsync(outMovement);
 
@@ -281,7 +287,7 @@ namespace StockFlow.Application.Services
                 Quantity = dto.Quantity,
                 Note = dto.Note,
                 TransferGroupId = transferGroupId,
-                PerformedByUserId = _currentUserService.GetUserId()
+                PerformedByUserId = userId
             };
             await _stockMovementRepository.AddAsync(inMovement);
 
@@ -309,6 +315,8 @@ namespace StockFlow.Application.Services
             {
                 return BaseResult<IEnumerable<ResultTransferDto>>.Fail(resultValidation.Errors);
             }
+
+            var userId = _currentUserService.GetUserId();
 
             var reservedPerSource = new Dictionary<(int ProductId, int WarehouseId), int>();
             var stockCache = new Dictionary<(int ProductId, int WarehouseId), Stock>();
@@ -430,7 +438,7 @@ namespace StockFlow.Application.Services
                     Quantity = -transfer.Quantity,
                     Note = transfer.Note,
                     TransferGroupId = transferGroupId,
-                    PerformedByUserId = _currentUserService.GetUserId()
+                    PerformedByUserId = userId
                 };
                 await _stockMovementRepository.AddAsync(outMovement);
 
@@ -442,7 +450,7 @@ namespace StockFlow.Application.Services
                     Quantity = transfer.Quantity,
                     Note = transfer.Note,
                     TransferGroupId = transferGroupId,
-                    PerformedByUserId = _currentUserService.GetUserId()
+                    PerformedByUserId = userId
                 };
                 await _stockMovementRepository.AddAsync(inMovement);
 
@@ -466,8 +474,8 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultStockMovementDto>>> GetMovementsByWarehouseAsync(int warehouseId, int pageNumber, int pageSize)
         {
-            var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
-            if (warehouse == null)
+            var warehouseExists = await _warehouseRepository.Query().AnyAsync(w => w.Id == warehouseId);
+            if (!warehouseExists)
                 return BaseResult<PagedResult<ResultStockMovementDto>>.Fail("Depo bulunamadı", ResultErrorType.NotFound);
 
             var paged = await _stockMovementRepository.GetAllAsync(pageNumber, pageSize,

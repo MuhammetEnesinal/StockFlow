@@ -197,8 +197,8 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<PagedResult<ResultPurchaseOrderDto>>> GetBySupplierAsync(int supplierId, int pageNumber, int pageSize)
         {
-            var supplier = await _supplierRepository.GetByIdAsync(supplierId);
-            if (supplier == null)
+            var supplierExists = await _supplierRepository.Query().AnyAsync(s => s.Id == supplierId);
+            if (!supplierExists)
             {
                 return BaseResult<PagedResult<ResultPurchaseOrderDto>>.Fail("Tedarikçi bulunamadı", ResultErrorType.NotFound);
             }

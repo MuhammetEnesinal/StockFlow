@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
-using StockFlow.Application.Interfaces.UOW;
+﻿using StockFlow.Application.Interfaces.UOW;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +11,7 @@ namespace StockFlow.Infrastructure.UOW
     {
         public async Task<int> SaveChangesAsync()
         {
-          return await  _context.SaveChangesAsync();
+            return await _context.SaveChangesAsync();
         }
     }
 }

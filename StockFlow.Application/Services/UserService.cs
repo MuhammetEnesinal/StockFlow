@@ -38,20 +38,20 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultUserDto>.Fail(validateResult.Errors);
             }
 
-            var existingUser = await _userGenericRepository.Query()
-                    .FirstOrDefaultAsync(x => x.Email == createUserDto.Email);
+            var emailExists = await _userGenericRepository.Query()
+                    .AnyAsync(x => x.Email == createUserDto.Email);
 
-            if (existingUser != null)
+            if (emailExists)
             {
                 return BaseResult<ResultUserDto>.Fail(
                     $"'{createUserDto.Email}' email adresi başka bir kullanıcı tarafından kullanılıyor.",
                     ResultErrorType.Conflict);
             }
 
-            var existingEmployeeCode = await _userGenericRepository.Query()
-                    .FirstOrDefaultAsync(x => x.EmployeeCode == createUserDto.EmployeeCode);
+            var employeeCodeExists = await _userGenericRepository.Query()
+                    .AnyAsync(x => x.EmployeeCode == createUserDto.EmployeeCode);
 
-            if (existingEmployeeCode != null)
+            if (employeeCodeExists)
             {
                 return BaseResult<ResultUserDto>.Fail(
                     $"'{createUserDto.EmployeeCode}' personel kodu başka bir kullanıcı tarafından kullanılıyor.",
@@ -88,18 +88,8 @@ namespace StockFlow.Application.Services
             await _userGenericRepository.AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            var resultDto = new ResultUserDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                EmployeeCode = user.EmployeeCode,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role.ToString(),
-                IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                WarehouseName = warehouse?.Name
-            };
+            var resultDto = _mapper.Map<ResultUserDto>(user);
+            resultDto.WarehouseName = warehouse?.Name;
 
             return BaseResult<ResultUserDto>.Success(resultDto);
         }
@@ -194,20 +184,20 @@ namespace StockFlow.Application.Services
                     ResultErrorType.NotFound);
             }
 
-            var existingUser = await _userGenericRepository.Query()
-                   .FirstOrDefaultAsync(x => x.Email == updateUserDto.Email && x.Id != id);
+            var emailExists = await _userGenericRepository.Query()
+                   .AnyAsync(x => x.Email == updateUserDto.Email && x.Id != id);
 
-            if (existingUser != null)
+            if (emailExists)
             {
                 return BaseResult<ResultUserDto>.Fail(
                     $"'{updateUserDto.Email}' email adresi başka bir kullanıcı tarafından kullanılıyor.",
                     ResultErrorType.Conflict);
             }
 
-            var existingEmployeeCode = await _userGenericRepository.Query()
-                    .FirstOrDefaultAsync(x => x.EmployeeCode == updateUserDto.EmployeeCode && x.Id != id);
+            var employeeCodeExists = await _userGenericRepository.Query()
+                    .AnyAsync(x => x.EmployeeCode == updateUserDto.EmployeeCode && x.Id != id);
 
-            if (existingEmployeeCode != null)
+            if (employeeCodeExists)
             {
                 return BaseResult<ResultUserDto>.Fail(
                     $"'{updateUserDto.EmployeeCode}' personel kodu başka bir kullanıcı tarafından kullanılıyor.",
@@ -247,18 +237,8 @@ namespace StockFlow.Application.Services
 
             await _unitOfWork.SaveChangesAsync();
 
-            var userDto = new ResultUserDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                EmployeeCode = user.EmployeeCode,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role.ToString(),
-                IsActive = user.IsActive,
-                WarehouseId = user.WarehouseId,
-                WarehouseName = warehouse?.Name
-            };
+            var userDto = _mapper.Map<ResultUserDto>(user);
+            userDto.WarehouseName = warehouse?.Name;
 
             return BaseResult<ResultUserDto>.Success(userDto);
         }
