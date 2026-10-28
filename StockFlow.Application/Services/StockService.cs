@@ -23,7 +23,8 @@ namespace StockFlow.Application.Services
         IValidator<StockOutDto> _stockOutValidator,
         IValidator<TransferDto> _transferValidator,
         IValidator<TransferBatchDto> _transferBatchValidator,
-        ICurrentUserService _currentUserService) : IStockService
+        ICurrentUserService _currentUserService,
+        IGenericRepository<User> _userRepository) : IStockService
     {
 
 
@@ -35,6 +36,30 @@ namespace StockFlow.Application.Services
             if (!validationResult.IsValid)
             {
                 return BaseResult<ResultStockDto>.Fail(validationResult.Errors);
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<ResultStockDto>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<ResultStockDto>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { stockInDto.WarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<ResultStockDto>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
             }
 
             var userId = _currentUserService.GetUserId();
@@ -66,6 +91,13 @@ namespace StockFlow.Application.Services
             }
             else
             {
+                if ((long)stock.Quantity + stockInDto.Quantity > 1000000000)
+                {
+                    return BaseResult<ResultStockDto>.Fail(
+                        $"Stok miktarı 1.000.000.000'u aşamaz. Ürün: {product.Name}, Depo: {warehouse.Name}, Mevcut: {stock.Quantity}, Eklenecek: {stockInDto.Quantity}",
+                        ResultErrorType.BusinessRule);
+                }
+
                 stock.Quantity += stockInDto.Quantity;
             }
 
@@ -100,6 +132,30 @@ namespace StockFlow.Application.Services
             if (!validationResult.IsValid)
             {
                 return BaseResult<ResultStockDto>.Fail(validationResult.Errors);
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<ResultStockDto>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<ResultStockDto>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { stockOutDto.WarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<ResultStockDto>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
             }
 
             var userId = _currentUserService.GetUserId();
@@ -208,6 +264,30 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultTransferDto>.Fail(validationResult.Errors);
             }
 
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<ResultTransferDto>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<ResultTransferDto>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { dto.SourceWarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<ResultTransferDto>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
+            }
+
             var userId = _currentUserService.GetUserId();
 
             var product = await _productRepository.GetByIdAsync(dto.ProductId);
@@ -262,6 +342,13 @@ namespace StockFlow.Application.Services
             }
             else
             {
+                if ((long)targetStock.Quantity + dto.Quantity > 1000000000)
+                {
+                    return BaseResult<ResultTransferDto>.Fail(
+                        $"Stok miktarı 1.000.000.000'u aşamaz. Ürün: {product.Name}, Depo: {targetWarehouse.Name}, Mevcut: {targetStock.Quantity}, Eklenecek: {dto.Quantity}",
+                        ResultErrorType.BusinessRule);
+                }
+
                 targetStock.Quantity += dto.Quantity;
             }
 
@@ -314,6 +401,30 @@ namespace StockFlow.Application.Services
             if (!resultValidation.IsValid)
             {
                 return BaseResult<IEnumerable<ResultTransferDto>>.Fail(resultValidation.Errors);
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (transferBatchDto.Transfers.Select(t => t.SourceWarehouseId).Distinct().ToList().Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
             }
 
             var userId = _currentUserService.GetUserId();
@@ -426,6 +537,14 @@ namespace StockFlow.Application.Services
 
                     stockCache[targetKey] = targetStock;
                 }
+
+                if ((long)targetStock.Quantity + transfer.Quantity > 1000000000)
+                {
+                    return BaseResult<IEnumerable<ResultTransferDto>>.Fail(
+                        $"Stok miktarı 1.000.000.000'u aşamaz. Ürün: {product.Name}, Depo: {targetWarehouse.Name}, Mevcut: {targetStock.Quantity}, Eklenecek: {transfer.Quantity}",
+                        ResultErrorType.BusinessRule);
+                }
+
                 targetStock.Quantity += transfer.Quantity;
 
                 var transferGroupId = Guid.NewGuid();

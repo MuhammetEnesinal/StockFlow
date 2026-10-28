@@ -8,18 +8,19 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Validators.TransferValidators
 {
-    public class TransferDtoValidator:AbstractValidator<TransferDto>
+    public class TransferDtoValidator : AbstractValidator<TransferDto>
     {
 
         public TransferDtoValidator()
         {
             RuleFor(x => x.ProductId).GreaterThan(0).WithMessage("Ürün Id'si 0'dan büyük olmalıdır.");
-            
+
             RuleFor(x => x.SourceWarehouseId).GreaterThan(0).WithMessage("Kaynak Depo Id'si 0'dan büyük olmalıdır.");
-            
+
             RuleFor(x => x.TargetWarehouseId).GreaterThan(0).WithMessage("Hedef Depo Id'si 0'dan büyük olmalıdır.");
 
-            RuleFor(x => x.Quantity).GreaterThan(0).WithMessage("Miktar 0'dan büyük olmalıdır.");
+            RuleFor(x => x.Quantity).GreaterThan(0).WithMessage("Miktar 0'dan büyük olmalıdır.")
+                .LessThanOrEqualTo(1000000).WithMessage("Miktar 1.000.000'dan büyük olamaz.");
 
             RuleFor(x => x.Note).MaximumLength(500).WithMessage("Not alanı 500 karakterden uzun olamaz.")
                 .When(x => !string.IsNullOrEmpty(x.Note));

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StockFlow.Domain.Entities;
 
@@ -18,9 +18,12 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
                 .IsDescending(false, false, true)
                 .HasFilter("[IsDeleted] = 0");
 
-            builder.ToTable(t => t.HasCheckConstraint(
-                "CK_StockMovements_OrderOrPurchaseOrder",
-                "[OrderId] IS NULL OR [PurchaseOrderId] IS NULL"));
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_StockMovements_OrderOrPurchaseOrder", "[OrderId] IS NULL OR [PurchaseOrderId] IS NULL");
+                t.HasCheckConstraint("CK_StockMovements_Quantity_Range", "[Quantity] <> 0 AND [Quantity] >= -1000000 AND [Quantity] <= 1000000");
+                t.HasCheckConstraint("CK_StockMovements_Note_NotEmpty", "[Note] IS NULL OR LEN([Note]) > 0");
+            });
 
             builder.HasOne(x => x.PerformedByUser)
                 .WithMany(x => x.StockMovements)

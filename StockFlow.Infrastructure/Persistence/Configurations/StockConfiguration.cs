@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StockFlow.Domain.Entities;
 
@@ -8,7 +8,7 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<Stock> builder)
         {
-            builder.ToTable(t => t.HasCheckConstraint("CK_Stocks_Quantity_NonNegative", "[Quantity] >= 0"));
+            builder.ToTable(t => t.HasCheckConstraint("CK_Stocks_Quantity_Range", "[Quantity] >= 0 AND [Quantity] <= 1000000000"));
 
             builder.HasIndex(x => new { x.ProductId, x.WarehouseId }).IsUnique();
             builder.Property(x => x.RowVersion).IsRowVersion();

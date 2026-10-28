@@ -14,7 +14,7 @@ using StockFlow.Domain.Entities;
 
 namespace StockFlow.Application.Services
 {
-    public class AuthService(IGenericRepository<User> _userGenericRepository, ITokenService _tokenService, IValidator<LoginDto> _loginValidator, IValidator<ChangePasswordDto> _changePasswordValidator, IConfiguration _configuration, IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService, IMapper _mapper) : IAuthService
+    public class AuthService(IGenericRepository<User> _userGenericRepository, ITokenService _tokenService, IValidator<LoginDto> _loginValidator, IValidator<ChangePasswordDto> _changePasswordValidator, IValidator<RefreshTokenDto> _refreshTokenValidator, IConfiguration _configuration, IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService, IMapper _mapper) : IAuthService
     {
         private static readonly string _dummyPasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString());
 
@@ -52,7 +52,7 @@ namespace StockFlow.Application.Services
             var token = _tokenService.GenerateToken(user);
 
             var refreshToken = _tokenService.GenerateRefreshToken();
-            user.RefreshToken = refreshToken;
+            user.RefreshTokenHash = _tokenService.HashRefreshToken(refreshToken);
             user.RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(7);
 
             var resultUserDto = _mapper.Map<ResultUserDto>(user);
@@ -84,7 +84,7 @@ namespace StockFlow.Application.Services
                 return BaseResult<bool>.Fail("Kullanıcı Bulunamadı.", ResultErrorType.NotFound);
             }
 
-            user.RefreshToken = null;
+            user.RefreshTokenHash = null;
             user.RefreshTokenExpiresAt = null;
             await _unitOfWork.SaveChangesAsync();
             return BaseResult<bool>.Success(true);
@@ -93,9 +93,17 @@ namespace StockFlow.Application.Services
 
         public async Task<BaseResult<LoginResultDto>> RefreshTokenAsync(RefreshTokenDto refreshTokenDto)
         {
+            var validateResult = await _refreshTokenValidator.ValidateAsync(refreshTokenDto);
+            if (!validateResult.IsValid)
+            {
+                return BaseResult<LoginResultDto>.Fail(validateResult.Errors);
+            }
+
+            var refreshTokenHash = _tokenService.HashRefreshToken(refreshTokenDto.RefreshToken);
+
             var user = await _userGenericRepository.QueryForUpdate()
                 .Include(x => x.Warehouse)
-                .FirstOrDefaultAsync(x => x.RefreshToken == refreshTokenDto.RefreshToken);
+                .FirstOrDefaultAsync(x => x.RefreshTokenHash == refreshTokenHash);
 
             if (user == null)
             {
@@ -109,7 +117,7 @@ namespace StockFlow.Application.Services
 
             if (!user.IsActive)
             {
-                user.RefreshToken = null;
+                user.RefreshTokenHash = null;
                 user.RefreshTokenExpiresAt = null;
                 await _unitOfWork.SaveChangesAsync();
                 return BaseResult<LoginResultDto>.Fail("Hesabınız dondurulmuş veya kapatılmıştır.", ResultErrorType.Forbidden);
@@ -119,7 +127,7 @@ namespace StockFlow.Application.Services
 
             var refreshToken = _tokenService.GenerateRefreshToken();
 
-            user.RefreshToken = refreshToken;
+            user.RefreshTokenHash = _tokenService.HashRefreshToken(refreshToken);
             user.RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(7);
 
             await _unitOfWork.SaveChangesAsync();
@@ -165,7 +173,7 @@ namespace StockFlow.Application.Services
             }
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
-            user.RefreshToken = null;
+            user.RefreshTokenHash = null;
             user.RefreshTokenExpiresAt = null;
 
             await _unitOfWork.SaveChangesAsync();

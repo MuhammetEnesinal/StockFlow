@@ -52,14 +52,16 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("PerformedByEmployeeCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("PerformedByUserId")
                         .HasColumnType("int");
 
                     b.Property<string>("PerformedByUserName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("UpdateAtTime")
                         .HasColumnType("datetime2");
@@ -102,7 +104,10 @@ namespace StockFlow.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", t =>
+                        {
+                            t.HasCheckConstraint("CK_Categories_Name_NotEmpty", "LEN([Name]) > 0");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.Customer", b =>
@@ -141,7 +146,14 @@ namespace StockFlow.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL AND [IsDeleted] = 0");
 
-                    b.ToTable("Customers");
+                    b.ToTable("Customers", t =>
+                        {
+                            t.HasCheckConstraint("CK_Customers_Email_NotEmpty", "[Email] IS NULL OR LEN([Email]) > 0");
+
+                            t.HasCheckConstraint("CK_Customers_FullName_NotEmpty", "LEN([FullName]) > 0");
+
+                            t.HasCheckConstraint("CK_Customers_PhoneNumber_Format", "[PhoneNumber] IS NULL OR [PhoneNumber] LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.Order", b =>
@@ -166,7 +178,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -193,7 +206,10 @@ namespace StockFlow.Infrastructure.Migrations
                     b.HasIndex("OrderNumber")
                         .IsUnique();
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", t =>
+                        {
+                            t.HasCheckConstraint("CK_Orders_TotalAmount_Range", "[TotalAmount] >= 0 AND [TotalAmount] <= 1000000000000000");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.OrderItem", b =>
@@ -237,7 +253,12 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItems_Quantity_Range", "[Quantity] >= 1 AND [Quantity] <= 1000000");
+
+                            t.HasCheckConstraint("CK_OrderItems_UnitPrice_Range", "[UnitPrice] > 0 AND [UnitPrice] <= 10000000");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.Product", b =>
@@ -290,7 +311,16 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("SupplierId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", t =>
+                        {
+                            t.HasCheckConstraint("CK_Products_MinimumStockLevel_Range", "[MinimumStockLevel] >= 0 AND [MinimumStockLevel] <= 1000000");
+
+                            t.HasCheckConstraint("CK_Products_Name_NotEmpty", "LEN([Name]) > 0");
+
+                            t.HasCheckConstraint("CK_Products_Price_Range", "[Price] > 0 AND [Price] <= 10000000");
+
+                            t.HasCheckConstraint("CK_Products_SKU_NotEmpty", "LEN([SKU]) > 0");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.PurchaseOrder", b =>
@@ -312,7 +342,8 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("PurchaseOrderNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("ReceivedAt")
                         .HasColumnType("datetime2");
@@ -349,7 +380,12 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("PurchaseOrders");
+                    b.ToTable("PurchaseOrders", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrders_ReceivedAt_NotBeforeSentAt", "[ReceivedAt] IS NULL OR [SentAt] IS NULL OR [ReceivedAt] >= [SentAt]");
+
+                            t.HasCheckConstraint("CK_PurchaseOrders_ReceivedAt_RequiresSentAt", "[ReceivedAt] IS NULL OR [SentAt] IS NOT NULL");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.PurchaseOrderItem", b =>
@@ -391,7 +427,14 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("PurchaseOrderId");
 
-                    b.ToTable("PurchaseOrderItems");
+                    b.ToTable("PurchaseOrderItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderItems_OrderedQuantity_Range", "[OrderedQuantity] >= 1 AND [OrderedQuantity] <= 1000000");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderItems_ReceivedQuantity_Range", "[ReceivedQuantity] >= 0 AND [ReceivedQuantity] <= [OrderedQuantity]");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderItems_UnitPrice_Range", "[UnitPrice] > 0 AND [UnitPrice] <= 10000000");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.Stock", b =>
@@ -435,7 +478,7 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.ToTable("Stocks", t =>
                         {
-                            t.HasCheckConstraint("CK_Stocks_Quantity_NonNegative", "[Quantity] >= 0");
+                            t.HasCheckConstraint("CK_Stocks_Quantity_Range", "[Quantity] >= 0 AND [Quantity] <= 1000000000");
                         });
                 });
 
@@ -502,7 +545,11 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.ToTable("StockMovements", t =>
                         {
+                            t.HasCheckConstraint("CK_StockMovements_Note_NotEmpty", "[Note] IS NULL OR LEN([Note]) > 0");
+
                             t.HasCheckConstraint("CK_StockMovements_OrderOrPurchaseOrder", "[OrderId] IS NULL OR [PurchaseOrderId] IS NULL");
+
+                            t.HasCheckConstraint("CK_StockMovements_Quantity_Range", "[Quantity] <> 0 AND [Quantity] >= -1000000 AND [Quantity] <= 1000000");
                         });
                 });
 
@@ -542,7 +589,14 @@ namespace StockFlow.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL AND [IsDeleted] = 0");
 
-                    b.ToTable("Suppliers");
+                    b.ToTable("Suppliers", t =>
+                        {
+                            t.HasCheckConstraint("CK_Suppliers_Email_NotEmpty", "[Email] IS NULL OR LEN([Email]) > 0");
+
+                            t.HasCheckConstraint("CK_Suppliers_Name_NotEmpty", "LEN([Name]) > 0");
+
+                            t.HasCheckConstraint("CK_Suppliers_PhoneNumber_Format", "[PhoneNumber] IS NULL OR [PhoneNumber] LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.User", b =>
@@ -579,17 +633,19 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(11)
                         .HasColumnType("nvarchar(11)");
 
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("RefreshTokenExpiresAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<int>("Role")
                         .HasColumnType("int");
@@ -612,7 +668,18 @@ namespace StockFlow.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", t =>
+                        {
+                            t.HasCheckConstraint("CK_Users_Email_NotEmpty", "LEN([Email]) > 0");
+
+                            t.HasCheckConstraint("CK_Users_EmployeeCode_NotEmpty", "LEN([EmployeeCode]) > 0");
+
+                            t.HasCheckConstraint("CK_Users_FullName_NotEmpty", "LEN([FullName]) > 0");
+
+                            t.HasCheckConstraint("CK_Users_PhoneNumber_Format", "[PhoneNumber] IS NULL OR [PhoneNumber] LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'");
+
+                            t.HasCheckConstraint("CK_Users_RefreshToken_Pair", "([RefreshTokenHash] IS NULL AND [RefreshTokenExpiresAt] IS NULL) OR ([RefreshTokenHash] IS NOT NULL AND [RefreshTokenExpiresAt] IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.Warehouse", b =>
@@ -647,7 +714,12 @@ namespace StockFlow.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Warehouses");
+                    b.ToTable("Warehouses", t =>
+                        {
+                            t.HasCheckConstraint("CK_Warehouses_Address_NotEmpty", "[Address] IS NULL OR LEN([Address]) > 0");
+
+                            t.HasCheckConstraint("CK_Warehouses_Name_NotEmpty", "LEN([Name]) > 0");
+                        });
                 });
 
             modelBuilder.Entity("StockFlow.Domain.Entities.AuditLog", b =>

@@ -14,10 +14,16 @@ namespace StockFlow.Infrastructure.Services
     {
         public string GenerateRefreshToken()
         {
-            var randomBytes= new byte[64];
-            var rng=RandomNumberGenerator.Create();
+            var randomBytes = new byte[64];
+            var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomBytes);
             return Convert.ToBase64String(randomBytes);
+        }
+
+        public string HashRefreshToken(string refreshToken)
+        {
+            var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken));
+            return Convert.ToHexString(hashBytes);
         }
 
         public string GenerateToken(User user)
@@ -29,7 +35,7 @@ namespace StockFlow.Infrastructure.Services
                  new Claim(ClaimTypes.Role, user.Role.ToString()),
                  new Claim("FullName", user.FullName),
                  new Claim("EmployeeCode", user.EmployeeCode)
- 
+
             };
             var secretKey = _configuration["JwtSettings:SecretKey"];
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!));

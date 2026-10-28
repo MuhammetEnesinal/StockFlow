@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using StockFlow.Application.DTOs.UsersDtos;
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,7 @@ namespace StockFlow.Application.Validators.UserValidators
 
             RuleFor(x => x.PhoneNumber)
                 .Length(11).WithMessage("Telefon numarası 11 haneli olmak zorundadır.")
-                .Matches(@"^\d+$").WithMessage("Telefon numarası sadece rakamlardan oluşmalıdır.")
+                .Matches(@"^[0-9]+$").WithMessage("Telefon numarası sadece rakamlardan oluşmalıdır.")
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
 
             RuleFor(x => x.EmployeeCode)
@@ -40,11 +40,12 @@ namespace StockFlow.Application.Validators.UserValidators
 
             RuleFor(x => x.Password)
                 .NotEmpty().WithMessage("Şifre boş bırakılamaz.")
-                .MinimumLength(6).WithMessage("Şifre en az 6 karakter olmalıdır.")
-                .MaximumLength(200).WithMessage("Şifre 200 karakterden uzun olamaz.")
-                .Matches(@"[A-Z]").WithMessage("Şifre en az bir büyük harf içermelidir.")
-                .Matches(@"[a-z]").WithMessage("Şifre en az bir küçük harf içermelidir.")
-                .Matches(@"[0-9]").WithMessage("Şifre en az bir rakam içermelidir.");
+                .MinimumLength(8).WithMessage("Şifre en az 8 karakter olmalıdır.")
+                .MaximumLength(36).WithMessage("Şifre 36 karakterden uzun olamaz.")
+                .Matches(@"\p{Lu}").WithMessage("Şifre en az bir büyük harf içermelidir.")
+                .Matches(@"\p{Ll}").WithMessage("Şifre en az bir küçük harf içermelidir.")
+                .Matches(@"[0-9]").WithMessage("Şifre en az bir rakam içermelidir.")
+                .Matches(@"[^\p{L}\p{N}]").WithMessage("Şifre en az bir özel karakter içermelidir (harf ve rakam dışında bir karakter).");
 
             RuleFor(x => x.Role)
                 .NotNull().WithMessage("Kullanıcı rolü boş bırakılamaz.")

@@ -1,11 +1,13 @@
 using FluentValidation;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using StockFlow.API.ExceptionHandling;
+using StockFlow.Application.Common;
 using StockFlow.Application.Interfaces.Repositories;
 using StockFlow.Application.Interfaces.Services;
 using StockFlow.Application.Interfaces.UOW;
@@ -47,6 +49,44 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var logger = context.HttpContext.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("ModelBinding");
+
+            var errors = new List<ResultError>();
+
+            foreach (var entry in context.ModelState)
+            {
+                if (entry.Value == null || entry.Value.Errors.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var error in entry.Value.Errors)
+                {
+                    var detail = string.IsNullOrEmpty(error.ErrorMessage)
+                        ? error.Exception?.Message
+                        : error.ErrorMessage;
+
+                    logger.LogWarning("Model bağlama hatası. Alan: {Field}, Ayrıntı: {Detail}", entry.Key, detail);
+                }
+
+                errors.Add(new ResultError(entry.Key, "Geçersiz veya eksik değer."));
+            }
+
+            var result = new BaseResult<object>
+            {
+                Errors = errors,
+                ErrorType = ResultErrorType.Validation
+            };
+
+            return new UnprocessableEntityObjectResult(result);
+        };
     });
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

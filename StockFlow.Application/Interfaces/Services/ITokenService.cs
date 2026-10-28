@@ -12,5 +12,7 @@ namespace StockFlow.Application.Interfaces.Services
         string GenerateToken(User user);
 
         string GenerateRefreshToken();
+
+        string HashRefreshToken(string refreshToken);
     }
 }

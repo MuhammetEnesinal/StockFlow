@@ -13,7 +13,7 @@ namespace StockFlow.Infrastructure.Interceptors
 {
     public class AuditDbContextInterceptor(ICurrentUserService _currentUserService) : SaveChangesInterceptor
     {
-        private static readonly HashSet<string> _ignoredProperties = new() { "PasswordHash", "RefreshToken", "RefreshTokenExpiresAt", "UpdateAtTime" };
+        private static readonly HashSet<string> _ignoredProperties = new() { "PasswordHash", "RefreshTokenHash", "RefreshTokenExpiresAt", "UpdateAtTime" };
 
         private static readonly JsonSerializerOptions _changesJsonOptions = new()
         {

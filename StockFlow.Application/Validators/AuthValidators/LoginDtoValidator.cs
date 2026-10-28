@@ -9,10 +9,12 @@ namespace StockFlow.Application.Validators.AuthValidators
         {
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Email boş bırakılamaz.")
-                .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
+                .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.")
+                .MaximumLength(200).WithMessage("Email adresi 200 karakterden uzun olamaz.");
 
             RuleFor(x => x.Password)
-                .NotEmpty().WithMessage("Şifre boş bırakılamaz.");
+                .NotEmpty().WithMessage("Şifre boş bırakılamaz.")
+                .MaximumLength(200).WithMessage("Şifre 200 karakterden uzun olamaz.");
         }
     }
 }

@@ -31,7 +31,7 @@ namespace StockFlow.Infrastructure.Repositories
             Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null)
         {
 
-            pageNumber = Math.Max(pageNumber, 1);
+            pageNumber = Math.Clamp(pageNumber, 1, 1000000);
             pageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
 
             IQueryable<T> query = _context.Set<T>().AsNoTracking();

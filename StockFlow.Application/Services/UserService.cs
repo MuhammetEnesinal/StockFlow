@@ -8,6 +8,7 @@ using StockFlow.Application.Interfaces.Repositories;
 using StockFlow.Application.Interfaces.Services;
 using StockFlow.Application.Interfaces.UOW;
 using StockFlow.Domain.Entities;
+using StockFlow.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -114,6 +115,17 @@ namespace StockFlow.Application.Services
 
             var user = check.User;
 
+            if (user.Role == UserRole.Admin && user.IsActive)
+            {
+                var otherActiveAdminExists = await _userGenericRepository.Query()
+                    .AnyAsync(x => x.Id != id && x.Role == UserRole.Admin && x.IsActive);
+
+                if (!otherActiveAdminExists)
+                {
+                    return BaseResult<bool>.Fail("Sistemde en az bir aktif Admin kalmalıdır.", ResultErrorType.Conflict);
+                }
+            }
+
             if (check.HasStockMovements)
             {
                 return BaseResult<bool>.Fail("Bu kullanıcının geçmiş stok hareketleri var, silinemez.", ResultErrorType.Conflict);
@@ -219,6 +231,18 @@ namespace StockFlow.Application.Services
 
             var newRole = updateUserDto.Role!.Value;
             var newIsActive = updateUserDto.IsActive!.Value;
+
+            if (user.Role == UserRole.Admin && user.IsActive && (newRole != UserRole.Admin || !newIsActive))
+            {
+                var otherActiveAdminExists = await _userGenericRepository.Query()
+                    .AnyAsync(x => x.Id != id && x.Role == UserRole.Admin && x.IsActive);
+
+                if (!otherActiveAdminExists)
+                {
+                    return BaseResult<ResultUserDto>.Fail("Sistemde en az bir aktif Admin kalmalıdır.", ResultErrorType.Conflict);
+                }
+            }
+
             var revokeRefreshToken = !newIsActive || user.Role != newRole;
 
             user.Email = updateUserDto.Email;
@@ -231,7 +255,7 @@ namespace StockFlow.Application.Services
 
             if (revokeRefreshToken)
             {
-                user.RefreshToken = null;
+                user.RefreshTokenHash = null;
                 user.RefreshTokenExpiresAt = null;
             }
 

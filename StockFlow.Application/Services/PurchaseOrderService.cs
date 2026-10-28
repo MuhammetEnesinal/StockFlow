@@ -30,7 +30,8 @@ namespace StockFlow.Application.Services
         IValidator<CreatePurchaseOrderDto> _createPurchaseOrderValidator,
         IValidator<ReceiveItemDto> _receiveItemValidator,
         IValidator<PurchaseOrderItemRequestDto> _purchaseOrderItemRequestValidator,
-        ICurrentUserService _currentUserService) : IPurchaseOrderService
+        ICurrentUserService _currentUserService,
+        IGenericRepository<User> _userRepository) : IPurchaseOrderService
     {
         public async Task<BaseResult<bool>> CancelAsync(int id)
         {
@@ -39,6 +40,30 @@ namespace StockFlow.Application.Services
             if (purchaseOrder == null)
             {
                 return BaseResult<bool>.Fail("Satın alma siparişi bulunamadı", ResultErrorType.NotFound);
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<bool>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<bool>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { purchaseOrder.WarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<bool>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
             }
 
             if (purchaseOrder.Status == PurchaseOrderStatus.Received || purchaseOrder.Status == PurchaseOrderStatus.Cancelled)
@@ -60,6 +85,30 @@ namespace StockFlow.Application.Services
             if (!validateResult.IsValid)
             {
                 return BaseResult<ResultPurchaseOrderDto>.Fail(validateResult.Errors);
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<ResultPurchaseOrderDto>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { createPurchaseOrderDto.WarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
             }
 
             var userId = _currentUserService.GetUserId();
@@ -237,6 +286,30 @@ namespace StockFlow.Application.Services
                 return BaseResult<ResultPurchaseOrderDto>.Fail("Satın alma siparişi bulunamadı", ResultErrorType.NotFound);
             }
 
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<ResultPurchaseOrderDto>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { purchaseOrder.WarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
+            }
+
             if (purchaseOrder.Status == PurchaseOrderStatus.Received)
             {
                 return BaseResult<ResultPurchaseOrderDto>.Fail(
@@ -311,6 +384,13 @@ namespace StockFlow.Application.Services
                     stockCache[purchaseOrderItem.ProductId] = stock;
                 }
 
+                if ((long)stock.Quantity + receiveItem.ReceivedQuantity > 1000000000)
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail(
+                        $"Stok miktarı 1.000.000.000'u aşamaz. Ürün: {purchaseOrderItem.Product.Name}, Mevcut: {stock.Quantity}, Eklenecek: {receiveItem.ReceivedQuantity}",
+                        ResultErrorType.BusinessRule);
+                }
+
                 stock.Quantity += receiveItem.ReceivedQuantity;
 
                 var movement = new StockMovement
@@ -358,6 +438,30 @@ namespace StockFlow.Application.Services
             if (purchaseOrder == null)
             {
                 return BaseResult<ResultPurchaseOrderDto>.Fail("Satın alma siparişi bulunamadı", ResultErrorType.NotFound);
+            }
+
+            var currentUserId = _currentUserService.GetUserId();
+            var currentUser = await _userRepository.Query()
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new { u.Role, u.WarehouseId })
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                return BaseResult<ResultPurchaseOrderDto>.Fail("Kullanıcı bulunamadı.", ResultErrorType.Forbidden);
+            }
+
+            if (currentUser.Role != UserRole.Admin)
+            {
+                if (currentUser.WarehouseId == null)
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail("Bu işlem için bir depoya atanmış olmanız gerekir.", ResultErrorType.Forbidden);
+                }
+
+                if (new[] { purchaseOrder.WarehouseId }.Any(wid => wid != currentUser.WarehouseId.Value))
+                {
+                    return BaseResult<ResultPurchaseOrderDto>.Fail("Yalnızca kendi deponuzda işlem yapabilirsiniz.", ResultErrorType.Forbidden);
+                }
             }
 
             if (purchaseOrder.Status != PurchaseOrderStatus.Draft)

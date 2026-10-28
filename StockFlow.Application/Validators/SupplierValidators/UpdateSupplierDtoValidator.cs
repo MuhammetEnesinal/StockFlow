@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using StockFlow.Application.DTOs.SupplierDtos;
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace StockFlow.Application.Validators.SupplierValidators
 
             RuleFor(x => x.PhoneNumber)
                 .Length(11).WithMessage("Telefon numarası 11 haneli olmak zorundadır.")
-                .Matches(@"^\d+$").WithMessage("Telefon numarası sadece rakamlardan oluşmalıdır.")
+                .Matches(@"^[0-9]+$").WithMessage("Telefon numarası sadece rakamlardan oluşmalıdır.")
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
 
 

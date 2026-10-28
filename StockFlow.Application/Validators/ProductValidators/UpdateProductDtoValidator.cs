@@ -14,10 +14,12 @@ namespace StockFlow.Application.Validators.ProductValidators
             RuleFor(x => x.Price)
                   .GreaterThan(0).WithMessage("Fiyat 0'dan büyük olmalıdır.")
                   .Must(price => decimal.Round(price, 2) == price)
-                  .WithMessage("Fiyat en fazla 2 ondalık basamak içerebilir.");
+                  .WithMessage("Fiyat en fazla 2 ondalık basamak içerebilir.")
+                  .LessThanOrEqualTo(10000000m).WithMessage("Fiyat 10.000.000'dan büyük olamaz.");
 
             RuleFor(x => x.MinimumStockLevel)
-                .GreaterThanOrEqualTo(0).WithMessage("Minimum stok seviyesi negatif olamaz.");
+                .GreaterThanOrEqualTo(0).WithMessage("Minimum stok seviyesi negatif olamaz.")
+                .LessThanOrEqualTo(1000000).WithMessage("Minimum stok seviyesi 1.000.000'dan büyük olamaz.");
 
             RuleFor(x => x.CategoryId)
                 .GreaterThan(0).WithMessage("Geçerli bir kategori seçilmelidir.");

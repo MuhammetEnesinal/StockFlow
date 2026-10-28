@@ -8,12 +8,13 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Validators.PurchaseValidators
 {
-    public class ReceiveItemDtoValidator:AbstractValidator<ReceiveItemDto>
+    public class ReceiveItemDtoValidator : AbstractValidator<ReceiveItemDto>
     {
         public ReceiveItemDtoValidator()
         {
             RuleFor(x => x.PurchaseOrderItemId).GreaterThan(0).WithMessage("Geçersiz sipariş kalemi ID'si.");
-            RuleFor(x => x.ReceivedQuantity).GreaterThan(0).WithMessage("Alınan miktar 0'dan büyük olmalıdır.");
+            RuleFor(x => x.ReceivedQuantity).GreaterThan(0).WithMessage("Alınan miktar 0'dan büyük olmalıdır.")
+                .LessThanOrEqualTo(1000000).WithMessage("Alınan miktar 1.000.000'dan büyük olamaz.");
         }
     }
 }

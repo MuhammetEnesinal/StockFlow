@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Application.Validators.OrderValidators
 {
-    public class CreateOrderDtoValidator:AbstractValidator<CreateOrderDto>
+    public class CreateOrderDtoValidator : AbstractValidator<CreateOrderDto>
     {
         public CreateOrderDtoValidator()
         {
@@ -18,6 +18,10 @@ namespace StockFlow.Application.Validators.OrderValidators
 
             RuleFor(x => x.OrderItems)
                 .NotEmpty().WithMessage("Sipariş en az bir kalem içermelidir.");
+
+            RuleFor(x => x.OrderItems)
+                .Must(items => items.Count <= 100).WithMessage("Bir siparişte en fazla 100 kalem olabilir.")
+                .When(x => x.OrderItems != null);
         }
     }
 }

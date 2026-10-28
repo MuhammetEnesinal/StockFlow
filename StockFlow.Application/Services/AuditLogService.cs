@@ -23,6 +23,11 @@ namespace StockFlow.Application.Services
         {
             entityName = entityName.Trim();
 
+            if (entityName.Length > 100)
+            {
+                return BaseResult<PagedResult<ResultAuditLogDto>>.Fail("Varlık adı 100 karakterden uzun olamaz.", ResultErrorType.Validation);
+            }
+
             var paged = await _auditlogRepository.GetAllAsync(pageNumber, pageSize,
                 filter: x => x.EntityName == entityName);
             var result = _mapper.Map<PagedResult<ResultAuditLogDto>>(paged);

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StockFlow.Domain.Entities;
 
@@ -9,6 +9,8 @@ namespace StockFlow.Infrastructure.Persistence.Configurations
         public void Configure(EntityTypeBuilder<AuditLog> builder)
         {
             builder.Property(x => x.EntityName).HasMaxLength(100);
+            builder.Property(x => x.PerformedByUserName).HasMaxLength(200);
+            builder.Property(x => x.PerformedByEmployeeCode).HasMaxLength(20);
 
             builder.HasIndex(x => new { x.EntityName, x.Id })
                 .HasFilter("[IsDeleted] = 0");

@@ -9,6 +9,10 @@ namespace StockFlow.Application.Validators.TransferValidators
         {
             RuleFor(x => x.Transfers)
                 .NotEmpty().WithMessage("En az bir transfer işlemi gerekli.");
+
+            RuleFor(x => x.Transfers)
+                .Must(items => items.Count <= 100).WithMessage("Toplu transferde en fazla 100 işlem olabilir.")
+                .When(x => x.Transfers != null);
         }
     }
 }

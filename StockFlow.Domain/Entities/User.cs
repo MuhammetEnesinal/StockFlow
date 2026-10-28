@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace StockFlow.Domain.Entities
 {
-    public class User :BaseEntity
+    public class User : BaseEntity
     {
         public required string Email { get; set; }
         public required string PasswordHash { get; set; }
@@ -21,7 +21,7 @@ namespace StockFlow.Domain.Entities
         public int? WarehouseId { get; set; }
         public Warehouse? Warehouse { get; set; }
 
-        public string? RefreshToken { get; set; }
+        public string? RefreshTokenHash { get; set; }
         public DateTime? RefreshTokenExpiresAt { get; set; }
 
         public ICollection<Order> Orders { get; set; } = new List<Order>();

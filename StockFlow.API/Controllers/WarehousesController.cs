@@ -26,7 +26,7 @@ namespace StockFlow.API.Controllers
             return HandleResult(result);
         }
 
-        [Authorize(Roles = "Admin,WarehouseManager")]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> CreateAsync(CreateWarehouseDto dto)
         {
@@ -35,7 +35,7 @@ namespace StockFlow.API.Controllers
 
         }
 
-        [Authorize(Roles = "Admin,WarehouseManager")]
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAsync(int id, UpdateWarehouseDto dto)
         {
